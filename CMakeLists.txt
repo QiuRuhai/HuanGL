@@ -38,6 +38,8 @@ if(TARGET glfw)
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 elseif(TARGET glfw::glfw)
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw::glfw)
+else()
+    message(FATAL_ERROR "Found glfw3 config but no target named glfw or glfw::glfw")
 endif()
 
 # Assimp
