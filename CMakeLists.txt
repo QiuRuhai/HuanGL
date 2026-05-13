@@ -9,7 +9,6 @@ if(APPLE)
     add_compile_definitions(GL_SILENCE_DEPRECATION=1)
 endif()
 
-# Collect source files
 file(GLOB_RECURSE SRC
     src/*.cpp
     src/*.c
@@ -17,11 +16,17 @@ file(GLOB_RECURSE SRC
 
 add_executable(${PROJECT_NAME} ${SRC})
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+target_sources(${PROJECT_NAME} PRIVATE
+    external/glad/src/glad.c
+    external/stb/stb_image.cpp
 )
 
-# OpenGL
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_SOURCE_DIR}/external/glad/include
+    ${CMAKE_SOURCE_DIR}/external/glm
+    ${CMAKE_SOURCE_DIR}/external/stb
+)
+
 find_package(OpenGL REQUIRED)
 if(TARGET OpenGL::GL)
     target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
@@ -32,7 +37,6 @@ else()
     endif()
 endif()
 
-# GLFW
 find_package(glfw3 3.3 REQUIRED CONFIG)
 if(TARGET glfw)
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
@@ -42,7 +46,6 @@ else()
     message(FATAL_ERROR "Found glfw3 config but no target named glfw or glfw::glfw")
 endif()
 
-# Assimp
 find_package(assimp REQUIRED CONFIG)
 if(TARGET assimp::assimp)
     target_link_libraries(${PROJECT_NAME} PRIVATE assimp::assimp)
