@@ -1,146 +1,77 @@
-# LearnOGL - OpenGL 渲染项目
+# HuanGL
 
-一个基于现代 OpenGL 的高级渲染引擎项目，实现了 PBR（基于物理的渲染）、HDR、Bloom 等高级渲染技术。
+**HuanGL** is an OpenGL 4.6 renderer learning and showcase project. It started as a LearnOpenGL-derived codebase, but the active repository now contains a clean HuanGL foundation layer and will add rendering systems incrementally.
 
-## 📸 效果展示
+The original LearnOpenGL state is preserved at git tag `archive/learnogl-v1`.
 
-<div align="center">
+## Current Status
 
-![动画演示](demo/LearnOpenGL_Xt9IhFIL0h.gif)
+Phase 1 is complete:
 
-<p>
-  <img src="demo/helmet.png" width="45%" />
-  <img src="demo/Cerberus.png" width="45%" />
-</p>
+- GLFW window and input wrappers
+- OpenGL 4.6 context creation through GLAD2
+- Renderer state helpers and GL debug output
+- RAII wrappers for shaders, buffers, textures, framebuffers, and uniform buffers
+- Shared GLSL UBO definitions in `shader/common/uniforms.glsl`
+- Minimal `App` loop that opens a window and clears the screen
 
-</div>
+Phase 2 will introduce the render pipeline, beginning with deferred rendering infrastructure.
 
-## ✨ 功能特性
+## Repository Layout
 
-### 渲染技术
-- **PBR（物理渲染）** - 基于金属度/粗糙度的材质系统
-- **IBL（基于图像的光照）** - 环境光照与反射
-- **HDR（高动态范围渲染）** - 真实的光照范围
-- **Bloom（泛光效果）** - 明亮区域的光晕效果
-- **Deferred Shading（延迟渲染）** - 多光源优化渲染
-- **SSAO（屏幕空间环境光遮蔽）** - 增强深度感
-- **Blinn-Phong 光照** - 经典光照模型
+```text
+src/
+  core/          App, Window, Input
+  renderer/      OpenGL resource and state wrappers
+  pipeline/      Render pipeline code added by later phases
+  resource/      Resource management code added by later phases
+  scene/         Scene system code added by later phases
+  ui/            Debug UI code added by later phases
 
-### 渲染特性
-- **Skybox（天空盒）** - 环境背景渲染
-- **Normal Mapping（法线贴图）** - 表面细节增强
-- **模型加载** - 支持 GLTF 格式
-- **相机系统** - 自由视角控制
-- **多重采样抗锯齿** - MSAA 4x
+external/
+  glad/          Vendored GLAD2 loader
+  glm/           Vendored GLM headers
+  stb/           Vendored stb_image
 
-## 🛠️ 技术栈
+shader/
+  common/        Shared GLSL definitions
 
-- **OpenGL 3.3 Core** - 图形渲染 API
-- **GLFW** - 窗口管理与输入处理
-- **GLAD** - OpenGL 函数加载器
-- **GLM** - 数学库
-- **stb_image** - 图像加载
-- **Assimp** - 模型加载（通过 learnopengl 封装）
-- **CMake** - 构建系统
-
-## 📁 项目结构
-
-```
-LearnOGL/
-├── src/              # 源代码
-│   ├── main.cpp      # 主程序
-│   ├── glad.c        # GLAD 实现
-│   └── stb_image.cpp # stb_image 实现
-├── include/          # 头文件
-│   ├── learnopengl/  # 自定义工具类
-│   │   ├── shader.h  # 着色器封装
-│   │   ├── camera.h  # 相机类
-│   │   ├── model.h   # 模型加载
-│   │   └── mesh.h    # 网格类
-│   ├── glad/         # GLAD 头文件
-│   ├── GLFW/         # GLFW 头文件
-│   └── glm/          # GLM 数学库
-├── shader/           # 着色器代码
-│   ├── pbr/          # PBR 着色器
-│   ├── bloom/        # 泛光着色器
-│   ├── deferred/     # 延迟渲染着色器
-│   ├── ssao/         # SSAO 着色器
-│   └── ...
-├── resources/        # 资源文件
-│   ├── objects/      # 3D 模型
-│   │   ├── Cerberus/
-│   │   ├── DamagedHelmet/
-│   │   └── ...
-│   └── texture/      # 纹理
-│       ├── hdr/      # HDR 环境贴图
-│       └── pbr/      # PBR 材质贴图
-└── demo/             # 演示截图
+docs/
+  superpowers/   Specs and implementation plans
 ```
 
-## 🚀 构建与运行
+Models, textures, phase-specific shaders, and showcase scenes are intentionally not carried from the old LearnOpenGL tree. They will be added when each renderer phase needs them.
 
-### 环境要求
+## Build on Windows
 
-- C++11 或更高版本
-- CMake 3.10+
-- 支持 OpenGL 3.3 的显卡驱动
+Dependencies are provided through vcpkg. The current local toolchain path is:
 
-### Windows (MinGW/MSVC)
-
-```bash
-# 克隆仓库
-git clone <your-repo-url>
-cd LearnOGL
-
-# 创建构建目录
-mkdir build
-cd build
-
-# 生成构建文件
-cmake ..
-
-# 编译
-cmake --build .
-
-# 运行
-./LearnOpenGL  # Linux/Mac
-LearnOpenGL.exe # Windows
+```powershell
+$tc = "D:\Scoop\apps\vcpkg\2026.03.18\scripts\buildsystems\vcpkg.cmake"
+cmake -B build "-DCMAKE_TOOLCHAIN_FILE=$tc" -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --config Debug
 ```
 
-### 控制方式
+Output:
 
-- **WASD** - 移动相机
-- **鼠标** - 旋转视角
-- **滚轮** - 缩放视野
-- **ESC** - 退出程序
+```text
+build\Debug\HuanGL.exe
+```
 
-## 📚 学习资源
+When new `.cpp` files are added, re-run the configure command before building because the project currently uses `GLOB_RECURSE`.
 
-本项目基于 [LearnOpenGL CN](https://learnopengl-cn.github.io/) 教程开发，涵盖了：
+## Technical Direction
 
-- 基础光照理论
-- 高级光照技术
-- PBR 理论与实践
-- 延迟渲染管线
-- 后处理效果
+- OpenGL 4.6 Core Profile
+- GLAD2 loader API: `gladLoadGL((GLADloadfunc)glfwGetProcAddress)`
+- Direct State Access API for OpenGL objects
+- No RHI abstraction layer
+- C++17
+- GLFW and Assimp through vcpkg
 
-## 📋 待办事项
+## Planned Rendering Phases
 
-- [ ] 添加阴影映射
-- [ ] 实现粒子系统
-- [ ] 添加后处理效果（如运动模糊、景深）
-- [ ] 优化性能分析工具
-- [ ] 支持更多模型格式
-
-## 📄 许可证
-
-本项目仅供学习交流使用。
-
-## 🙏 致谢
-
-- [LearnOpenGL](https://learnopengl.com/) - 优秀的 OpenGL 教程
-- [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) - 示例模型资源
-
----
-
-⭐ 如果这个项目对你有帮助，欢迎 Star！
+- Phase 2: Render Pipeline
+- Phase 3: Scene System
+- Phase 4: Post-Processing
+- Phase 5-8: RSM, SSGI, VXGI, and DDGI
