@@ -1,12 +1,16 @@
-# 忽略构建目录
+# Build output
 build/
 cmake-build-*/
 out/
 
-# 忽略 IDE 配置文件
-.vscode/
+# IDE and editor state
 .vs/
 .idea/
+.vscode/
+
+# Generated Visual Studio project files
 *.sln
+*.slnx
 *.vcxproj
+*.vcxproj.filters
 *.vcxproj.user
