@@ -1,4 +1,5 @@
 #include "Input.h"
+#include <cassert>
 
 namespace HuanGL {
 
@@ -9,6 +10,7 @@ float       Input::scrollDelta_ = 0.0f;
 bool        Input::firstMouse_  = true;
 
 void Input::Init(GLFWwindow* window) {
+    assert(window != nullptr && "Input::Init called with null window");
     window_ = window;
     glfwSetCursorPosCallback(window, MouseCallback);
     glfwSetScrollCallback(window, ScrollCallback);
@@ -20,10 +22,12 @@ void Input::Update() {
 }
 
 bool Input::IsKeyPressed(int key) {
+    if (!window_) return false;
     return glfwGetKey(window_, key) == GLFW_PRESS;
 }
 
 bool Input::IsMouseButtonPressed(int button) {
+    if (!window_) return false;
     return glfwGetMouseButton(window_, button) == GLFW_PRESS;
 }
 
@@ -32,6 +36,7 @@ glm::vec2 Input::GetMouseDelta()    { return mouseDelta_; }
 float     Input::GetScrollDelta()   { return scrollDelta_; }
 
 void Input::SetCursorCaptured(bool captured) {
+    if (!window_) return;
     glfwSetInputMode(window_, GLFW_CURSOR,
         captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     firstMouse_ = true; // prevent jump on re-capture
