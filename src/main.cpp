@@ -1,11 +1,14 @@
 #include "core/Window.h"
 #include "core/Input.h"
+#include "renderer/Renderer.h"
 #include <iostream>
 
 int main() {
     try {
         HuanGL::Window window(1280, 720, "HuanGL");
         HuanGL::Input::Init(window.GetHandle());
+        HuanGL::Renderer::Init();
+        HuanGL::Renderer::SetViewport(0, 0, window.GetWidth(), window.GetHeight());
 
         while (!window.ShouldClose()) {
             HuanGL::Input::Update();
@@ -14,8 +17,8 @@ int main() {
             if (HuanGL::Input::IsKeyPressed(GLFW_KEY_ESCAPE))
                 break;
 
-            glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
+            HuanGL::Renderer::SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+            HuanGL::Renderer::Clear();
             window.SwapBuffers();
         }
     } catch (const std::exception& e) {
