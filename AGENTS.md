@@ -9,8 +9,7 @@ The active goal is to demonstrate C++ rendering architecture and gradually imple
 ## Build Method on Windows
 
 ```powershell
-$tc = "D:\Scoop\apps\vcpkg\2026.03.18\scripts\buildsystems\vcpkg.cmake"
-cmake -B build "-DCMAKE_TOOLCHAIN_FILE=$tc" -DCMAKE_BUILD_TYPE=Debug
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug
 ```
 
@@ -23,9 +22,7 @@ build\Debug\HuanGL.exe
 LLVM/clang-cl verification build:
 
 ```powershell
-$tc = "D:\Scoop\apps\vcpkg\2026.03.18\scripts\buildsystems\vcpkg.cmake"
 cmake -S . -B build-clang -G Ninja `
-  "-DCMAKE_TOOLCHAIN_FILE=$tc" `
   -DCMAKE_C_COMPILER=clang-cl `
   -DCMAKE_CXX_COMPILER=clang-cl `
   -DCMAKE_BUILD_TYPE=Debug
@@ -39,6 +36,7 @@ build-clang\HuanGL.exe
 ```
 
 The repository intentionally does not use `CMakePresets.json`; build commands stay explicit in docs.
+On Windows, `CMakeLists.txt` automatically uses `$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake` when `CMAKE_TOOLCHAIN_FILE` is not already set.
 
 Important: after adding new `.cpp` files, rerun CMake configure because the project uses `GLOB_RECURSE`.
 

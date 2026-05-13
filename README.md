@@ -44,16 +44,16 @@ Models, textures, phase-specific shaders, and showcase scenes are intentionally 
 
 ## Build on Windows
 
-Dependencies are provided through vcpkg. The current local toolchain path is:
+Dependencies are provided through vcpkg. On Windows, `CMakeLists.txt` automatically uses `$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake` when `CMAKE_TOOLCHAIN_FILE` is not already set. The expected local value is:
 
 ```powershell
-$tc = "D:\Scoop\apps\vcpkg\2026.03.18\scripts\buildsystems\vcpkg.cmake"
+$env:VCPKG_ROOT = "D:\Scoop\apps\vcpkg\current"
 ```
 
 Default MSVC build:
 
 ```powershell
-cmake -B build "-DCMAKE_TOOLCHAIN_FILE=$tc" -DCMAKE_BUILD_TYPE=Debug
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug
 ```
 
@@ -67,7 +67,6 @@ LLVM/clang-cl build:
 
 ```powershell
 cmake -S . -B build-clang -G Ninja `
-  "-DCMAKE_TOOLCHAIN_FILE=$tc" `
   -DCMAKE_C_COMPILER=clang-cl `
   -DCMAKE_CXX_COMPILER=clang-cl `
   -DCMAKE_BUILD_TYPE=Debug
