@@ -1,5 +1,3 @@
-#include "../renderer/Shader.h"
-#include "../renderer/Framebuffer.h"
 #include "../pipeline/RenderPipeline.h"
 #include "App.h"
 #include "Window.h"

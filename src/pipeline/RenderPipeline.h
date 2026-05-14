@@ -1,6 +1,8 @@
 #pragma once
-#include <memory>
 #include <string>
+// MSVC eagerly instantiates unique_ptr deleters — pass headers need complete types below
+#include "../renderer/Shader.h"
+#include "../renderer/Framebuffer.h"
 #include "passes/ShadowPass.h"
 #include "passes/GBufferPass.h"
 #include "passes/LightingPass.h"
