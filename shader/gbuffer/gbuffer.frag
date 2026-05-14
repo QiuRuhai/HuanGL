@@ -5,9 +5,9 @@ in vec2 vTexCoord;
 layout(location = 0) out vec4 OutAlbedoMetallic;
 layout(location = 1) out vec4 OutNormalRoughness;
 
-uniform sampler2D uAlbedoMap;
-uniform sampler2D uRoughnessMap;
-uniform sampler2D uMetallicMap;
+layout(binding = 0) uniform sampler2D uAlbedoMap;
+layout(binding = 1) uniform sampler2D uRoughnessMap;
+layout(binding = 2) uniform sampler2D uMetallicMap;
 uniform vec4  uBaseColor;
 uniform float uRoughness;
 uniform float uMetallic;

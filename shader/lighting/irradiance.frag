@@ -1,7 +1,7 @@
 #version 460 core
 in vec3 vWorldPos;
 out vec4 FragColor;
-uniform samplerCube uEnvMap;
+layout(binding = 0) uniform samplerCube uEnvMap;
 
 void main() {
     vec3 N = normalize(vWorldPos);

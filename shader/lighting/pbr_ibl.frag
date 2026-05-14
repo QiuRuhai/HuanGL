@@ -2,20 +2,21 @@
 in vec2 vUV;
 out vec4 FragColor;
 
-uniform sampler2D uAlbedoMetallic;
-uniform sampler2D uNormalRoughness;
-uniform sampler2D uDepth;
+layout(binding = 0) uniform sampler2D uAlbedoMetallic;
+layout(binding = 1) uniform sampler2D uNormalRoughness;
+layout(binding = 2) uniform sampler2D uDepth;
 
-uniform sampler2DArrayShadow uShadowMap;
+layout(binding = 3) uniform sampler2DArrayShadow uShadowMap;
 uniform mat4 uCascadeViewProj[4];
 uniform float uCascadeFar[4];
 uniform vec3 uLightDir;
 uniform vec3 uLightColor;
 
-uniform samplerCube uIrradianceMap;
-uniform samplerCube uPrefilterMap;
-uniform sampler2D uBRDFLUT;
+layout(binding = 4) uniform samplerCube uIrradianceMap;
+layout(binding = 5) uniform samplerCube uPrefilterMap;
+layout(binding = 6) uniform sampler2D uBRDFLUT;
 
+uniform mat4 uView;
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
 uniform float uAmbientStrength;
@@ -42,13 +43,18 @@ vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-float PCSS(sampler2DArrayShadow shadowMap, vec3 worldPos, vec3 N, vec3 L) {
-    float dist = length(worldPos - uCamPos);
+// 3x3 PCF over the chosen cascade. (Plan called this PCSS but no blocker
+// search / penumbra estimation is implemented — true PCSS is a TODO.)
+float PCF(sampler2DArrayShadow shadowMap, vec3 worldPos) {
+    // Cascade selection by view-space Z so screen-edge points don't get
+    // pushed into a higher cascade than necessary.
+    float viewZ = -(uView * vec4(worldPos, 1.0)).z;
     int cascade = 3;
-    for (int c = 0; c < 4; ++c) { if (dist < uCascadeFar[c]) { cascade = c; break; } }
+    for (int c = 0; c < 4; ++c) { if (viewZ < uCascadeFar[c]) { cascade = c; break; } }
     vec4 lightSpace = uCascadeViewProj[cascade] * vec4(worldPos, 1);
     vec3 proj = lightSpace.xyz / lightSpace.w;
-    if (proj.x < -1 || proj.x > 1 || proj.y < -1 || proj.y > 1) return 1.0;
+    proj = proj * 0.5 + 0.5;
+    if (proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0 || proj.z > 1.0) return 1.0;
     float shadow = 0;
     vec2 ts = 1.0 / vec2(textureSize(uShadowMap, 0));
     for (int x = -1; x <= 1; ++x)
@@ -89,7 +95,7 @@ void main() {
     vec3 specular = numerator / denominator;
     vec3 kD = (1.0 - F) * (1.0 - metallic);
     vec3 direct = (kD * albedo / PI + specular) * radiance * NdotL;
-    float shadow = PCSS(uShadowMap, worldPos, N, L);
+    float shadow = PCF(uShadowMap, worldPos);
     direct *= shadow;
 
     vec3 kS = FresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);

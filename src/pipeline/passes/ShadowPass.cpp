@@ -4,7 +4,7 @@
 #include "../../renderer/Renderer.h"
 #include "../../scene/Scene.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include <vector>
+#include <stdexcept>
 
 namespace HuanGL {
 
@@ -33,12 +33,17 @@ void ShadowPass::Init(int resolution) {
     glTextureParameteri(shadowArrayID_, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     float border[] = {1,1,1,1};
     glTextureParameterfv(shadowArrayID_, GL_TEXTURE_BORDER_COLOR, border);
+    // Required for sampler2DArrayShadow + texture(...) PCF sampling.
+    glTextureParameteri(shadowArrayID_, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTextureParameteri(shadowArrayID_, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
     fbo_ = std::make_unique<Framebuffer>(resolution, resolution);
     glNamedFramebufferTexture(fbo_->GetID(), GL_DEPTH_ATTACHMENT,
                               shadowArrayID_, 0);
     glNamedFramebufferDrawBuffer(fbo_->GetID(), GL_NONE);
     glNamedFramebufferReadBuffer(fbo_->GetID(), GL_NONE);
+    if (!fbo_->IsComplete())
+        throw std::runtime_error("[ShadowPass] FBO incomplete");
 }
 
 ShadowPass::~ShadowPass() {
@@ -46,7 +51,7 @@ ShadowPass::~ShadowPass() {
 }
 
 static glm::mat4 LightViewProj(const DirectionalLight& light,
-                                const std::vector<glm::vec3>& frustumCorners) {
+                                const std::array<glm::vec3, 8>& frustumCorners) {
     glm::vec3 center(0);
     for (auto& c : frustumCorners) center += c;
     center /= (float)frustumCorners.size();
@@ -65,8 +70,12 @@ static glm::mat4 LightViewProj(const DirectionalLight& light,
     return lightProj * lightView;
 }
 
-static std::vector<glm::vec3> FrustumCorners(const glm::mat4& invViewProj) {
-    std::vector<glm::vec3> corners(8);
+// Returns 8 world-space corners of the camera sub-frustum defined by
+// [nearRatio, farRatio] along the near→far axis (0 = near plane, 1 = far plane).
+// Linear interpolation along each corner ray yields a constant view-Z slice.
+static std::array<glm::vec3, 8> SubFrustumCorners(const glm::mat4& invViewProj,
+                                                   float nearRatio, float farRatio) {
+    std::array<glm::vec3, 8> full;
     int idx = 0;
     for (int z = 0; z < 2; ++z) {
         for (int y = 0; y < 2; ++y) {
@@ -74,11 +83,16 @@ static std::vector<glm::vec3> FrustumCorners(const glm::mat4& invViewProj) {
                 glm::vec4 ndc(x * 2.f - 1.f, y * 2.f - 1.f,
                               z == 0 ? -1.f : 1.f, 1.f);
                 glm::vec4 world = invViewProj * ndc;
-                corners[idx++] = glm::vec3(world) / world.w;
+                full[idx++] = glm::vec3(world) / world.w;
             }
         }
     }
-    return corners;
+    std::array<glm::vec3, 8> sub;
+    for (int i = 0; i < 4; ++i) {
+        sub[i]     = glm::mix(full[i], full[i + 4], nearRatio);
+        sub[i + 4] = glm::mix(full[i], full[i + 4], farRatio);
+    }
+    return sub;
 }
 
 void ShadowPass::Render(const Scene& scene, const CameraData& camera,
@@ -87,14 +101,21 @@ void ShadowPass::Render(const Scene& scene, const CameraData& camera,
     auto invVP  = glm::inverse(camera.viewProj);
 
     Renderer::EnableCullFace(true);
-    Renderer::SetCullFace(GL_FRONT);
     Renderer::EnableDepthTest(true);
     Renderer::EnableDepthWrite(true);
+    // Polygon offset handles peter-panning without breaking open meshes
+    // (front-face culling drops the floor plane entirely).
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(2.0f, 4.0f);
 
     shader_->Use();
 
+    float prevSplit = camera.near_;
+    float range = camera.far_ - camera.near_;
     for (int c = 0; c < 4; ++c) {
-        auto corners = FrustumCorners(invVP);
+        float nearRatio = (prevSplit - camera.near_) / range;
+        float farRatio  = (splits[c]  - camera.near_) / range;
+        auto corners = SubFrustumCorners(invVP, nearRatio, farRatio);
         glm::mat4 lightVP = LightViewProj(light, corners);
 
         cascades_[c].viewProj = lightVP;
@@ -117,9 +138,10 @@ void ShadowPass::Render(const Scene& scene, const CameraData& camera,
                                (void*)(uintptr_t)(sub.indexOffset * sizeof(uint32_t)));
             mesh->vao->Unbind();
         }
+        prevSplit = splits[c];
     }
 
-    Renderer::SetCullFace(GL_BACK);
+    glDisable(GL_POLYGON_OFFSET_FILL);
     Framebuffer::BindDefault();
 }
 

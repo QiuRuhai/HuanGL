@@ -1,7 +1,7 @@
 #version 460 core
 in vec3 vWorldPos;
 out vec4 FragColor;
-uniform sampler2D uEquirect;
+layout(binding = 0) uniform sampler2D uEquirect;
 
 const vec2 invAtan = vec2(0.1591, 0.3183);
 vec2 SampleSphericalMap(vec3 dir) {

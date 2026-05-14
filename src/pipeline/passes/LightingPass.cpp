@@ -18,25 +18,18 @@ static const glm::mat4 kCaptureViews[6] = {
     glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0, 1), glm::vec3(0,-1, 0)),
     glm::lookAt(glm::vec3(0,0,0), glm::vec3( 0, 0,-1), glm::vec3(0,-1, 0)),
 };
+// Cube faces are at +/-1, so a far plane of 10 is plenty.
+// Shader writes gl_Position.xyww anyway, pushing depth to far — projection range
+// only needs to avoid clipping the unit cube.
 static const glm::mat4 kCaptureProj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-
-static const char* kCubeVS = R"(#version 460 core
-layout(location=0) in vec3 aPos;
-out vec3 vWorldPos;
-uniform mat4 uViewProj;
-void main() {
-    vWorldPos = aPos;
-    gl_Position = (uViewProj * vec4(aPos, 1.0)).xyww;
-}
-)";
 
 void LightingPass::Init(int /*width*/, int /*height*/, const std::string& hdrPath) {
     pbrShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
                                           "../shader/lighting/pbr_ibl.frag");
-    irrShader_ = std::make_unique<Shader>(kCubeVS,
+    irrShader_ = std::make_unique<Shader>("../shader/lighting/cube.vert",
                                           "../shader/lighting/irradiance.frag");
-    pfShader_ = std::make_unique<Shader>(kCubeVS,
-                                          "../shader/lighting/prefilter.frag");
+    pfShader_ = std::make_unique<Shader>("../shader/lighting/cube.vert",
+                                         "../shader/lighting/prefilter.frag");
     brdfShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
                                            "../shader/lighting/brdf_lut.frag");
 
@@ -76,7 +69,8 @@ void LightingPass::GenerateIBL(const std::string& hdrPath) {
 
     // Equirect to cubemap (512^2)
     auto envCubemap = Texture::CreateCubemap(512, GL_RGB16F, true);
-    Shader eqShader(kCubeVS, "../shader/lighting/equirect_to_cubemap.frag");
+    Shader eqShader("../shader/lighting/cube.vert",
+                    "../shader/lighting/equirect_to_cubemap.frag");
     eqShader.Use();
     hdrTex->Bind(0);
 
@@ -178,6 +172,7 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     brdfLUT_->Bind(6);
 
     // Camera
+    pbrShader_->SetMat4("uView", camera.view);
     pbrShader_->SetMat4("uInvViewProj", glm::inverse(camera.viewProj));
     pbrShader_->SetVec3("uCamPos", camera.camPos);
     pbrShader_->SetFloat("uAmbientStrength", 1.0f);
