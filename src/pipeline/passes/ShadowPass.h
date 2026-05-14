@@ -2,7 +2,6 @@
 #include <memory>
 #include <array>
 #include <glm/glm.hpp>
-#include "../../renderer/Texture.h"
 #include "../../renderer/Schema.h"
 #include "../../renderer/UniformBuffer.h"
 

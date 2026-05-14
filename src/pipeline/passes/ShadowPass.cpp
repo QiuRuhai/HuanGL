@@ -5,8 +5,6 @@
 #include "../../scene/Scene.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
-#include <algorithm>
-#include <stdexcept>
 
 namespace HuanGL {
 
@@ -67,8 +65,7 @@ static glm::mat4 LightViewProj(const DirectionalLight& light,
     return lightProj * lightView;
 }
 
-static std::vector<glm::vec3> FrustumCorners(const glm::mat4& invViewProj,
-                                               float nearP, float farP) {
+static std::vector<glm::vec3> FrustumCorners(const glm::mat4& invViewProj) {
     std::vector<glm::vec3> corners(8);
     int idx = 0;
     for (int z = 0; z < 2; ++z) {
@@ -97,8 +94,7 @@ void ShadowPass::Render(const Scene& scene, const CameraData& camera,
     shader_->Use();
 
     for (int c = 0; c < 4; ++c) {
-        float prevFar = c == 0 ? camera.near_ : splits[c - 1];
-        auto corners = FrustumCorners(invVP, prevFar, splits[c]);
+        auto corners = FrustumCorners(invVP);
         glm::mat4 lightVP = LightViewProj(light, corners);
 
         cascades_[c].viewProj = lightVP;
