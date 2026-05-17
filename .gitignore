@@ -20,3 +20,6 @@ out/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+
+# Large model assets — download separately (see docs/superpowers/specs/2026-05-16-huangl-phase2.5-polish-design.md)
+resources/models/
