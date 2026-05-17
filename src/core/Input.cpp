@@ -1,5 +1,6 @@
 #include "Input.h"
 #include <cassert>
+#include <cstring>
 
 namespace HuanGL {
 
@@ -8,22 +9,36 @@ glm::vec2   Input::mousePos_    = {0, 0};
 glm::vec2   Input::mouseDelta_  = {0, 0};
 float       Input::scrollDelta_ = 0.0f;
 bool        Input::firstMouse_  = true;
+bool        Input::keysJustPressed_[GLFW_KEY_LAST + 1] = {};
 
 void Input::Init(GLFWwindow* window) {
     assert(window != nullptr && "Input::Init called with null window");
     window_ = window;
     glfwSetCursorPosCallback(window, MouseCallback);
     glfwSetScrollCallback(window, ScrollCallback);
+    glfwSetKeyCallback(window, KeyCallback);
+    std::memset(keysJustPressed_, 0, sizeof(keysJustPressed_));
 }
 
 void Input::Update() {
     mouseDelta_  = {0.0f, 0.0f};
     scrollDelta_ = 0.0f;
+    std::memset(keysJustPressed_, 0, sizeof(keysJustPressed_));
 }
 
 bool Input::IsKeyPressed(int key) {
     if (!window_) return false;
     return glfwGetKey(window_, key) == GLFW_PRESS;
+}
+
+bool Input::IsKeyJustPressed(int key) {
+    if (key < 0 || key > GLFW_KEY_LAST) return false;
+    return keysJustPressed_[key];
+}
+
+void Input::KeyCallback(GLFWwindow*, int key, int /*scancode*/, int action, int /*mods*/) {
+    if (key >= 0 && key <= GLFW_KEY_LAST && action == GLFW_PRESS)
+        keysJustPressed_[key] = true;
 }
 
 bool Input::IsMouseButtonPressed(int button) {

@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <string>
+#include <vector>
 #include "../renderer/UniformBuffer.h"
 
 namespace HuanGL {
@@ -24,12 +26,18 @@ private:
     void Shutdown();
     void Update(float dt);
     void Render();
+    void RegisterScene(std::unique_ptr<Scene> scene, std::string name);
+    void CycleScene();
 
     std::unique_ptr<Window>          window_;
     std::unique_ptr<Camera>          camera_;
-    std::unique_ptr<Scene>           scene_;
     std::unique_ptr<RenderPipeline>  pipeline_;
     std::unique_ptr<ResourceManager> resourceManager_;
+
+    // All registered scenes; index `activeSceneIdx_` is the live one.
+    std::vector<std::unique_ptr<Scene>> scenes_;
+    std::vector<std::string>            sceneNames_;
+    size_t                              activeSceneIdx_ = 0;
 
     std::unique_ptr<CameraUBO> cameraUBO_;
     std::unique_ptr<LightsUBO> lightsUBO_;
