@@ -37,9 +37,9 @@ std::shared_ptr<Mesh> ResourceManager::Load<Mesh>(const std::string& path) {
         if (auto p = it->second.ptr.lock())
             return std::static_pointer_cast<Mesh>(p);
     }
-    auto mesh = MeshLoader::Load(path);
-    cache_[key] = {mesh};
-    return mesh;
+    auto result = MeshLoader::Load(path);
+    cache_[key] = {result.mesh};
+    return result.mesh;
 }
 
 } // namespace HuanGL

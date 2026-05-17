@@ -31,6 +31,7 @@ struct Material {
     glm::vec4 baseColorFactor = {1, 1, 1, 1};
     float     roughnessFactor = 1.0f;
     float     metallicFactor  = 0.0f;
+    bool      packedMetallicRoughness = false; // glTF: G=roughness, B=metallic in one texture
 };
 
 struct DirectionalLight {

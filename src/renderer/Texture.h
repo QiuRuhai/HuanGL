@@ -10,6 +10,11 @@ class Texture {
 public:
     // Load 2D texture from file (sRGB=true uses GL_SRGB8_ALPHA8)
     static std::shared_ptr<Texture> Load2D(const std::string& path, bool sRGB = true);
+    // Load 2D texture from in-memory encoded image bytes (PNG/JPG/etc).
+    // Used for textures embedded in .glb / FBX files via Assimp.
+    static std::shared_ptr<Texture> Load2DFromMemory(const unsigned char* data,
+                                                      size_t size,
+                                                      bool sRGB = true);
     // Load HDR float texture from file
     static std::shared_ptr<Texture> LoadHDR(const std::string& path);
     // Create empty 2D texture (for FBO attachments)

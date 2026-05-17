@@ -52,6 +52,8 @@ void GBufferPass::Render(const Scene& scene, const CameraData& camera) {
             shader_->SetInt("uHasAlbedoTex",    mat.albedoMap    ? 1 : 0);
             shader_->SetInt("uHasRoughnessTex", mat.roughnessMap ? 1 : 0);
             shader_->SetInt("uHasMetallicTex",  mat.metallicMap  ? 1 : 0);
+            shader_->SetInt("uHasNormalTex",    mat.normalMap    ? 1 : 0);
+            shader_->SetInt("uPackedMetallicRoughness", mat.packedMetallicRoughness ? 1 : 0);
             shader_->SetVec4("uBaseColor",  mat.baseColorFactor);
             shader_->SetFloat("uRoughness", mat.roughnessFactor);
             shader_->SetFloat("uMetallic",  mat.metallicFactor);
@@ -59,6 +61,7 @@ void GBufferPass::Render(const Scene& scene, const CameraData& camera) {
             if (mat.albedoMap)    mat.albedoMap->Bind(0);
             if (mat.roughnessMap) mat.roughnessMap->Bind(1);
             if (mat.metallicMap)  mat.metallicMap->Bind(2);
+            if (mat.normalMap)    mat.normalMap->Bind(3);
 
             glDrawElements(GL_TRIANGLES, sub.indexCount, GL_UNSIGNED_INT,
                            (void*)(uintptr_t)(sub.indexOffset * sizeof(uint32_t)));

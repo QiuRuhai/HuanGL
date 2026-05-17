@@ -41,6 +41,45 @@ std::shared_ptr<Texture> Texture::Load2D(const std::string& path, bool sRGB) {
     return tex;
 }
 
+std::shared_ptr<Texture> Texture::Load2DFromMemory(const unsigned char* bytes,
+                                                    size_t size, bool sRGB) {
+    auto tex = std::shared_ptr<Texture>(new Texture());
+    tex->target_ = GL_TEXTURE_2D;
+
+    stbi_set_flip_vertically_on_load(true);
+    int nrChannels = 0;
+    unsigned char* data = stbi_load_from_memory(bytes, static_cast<int>(size),
+                                                 &tex->width_, &tex->height_,
+                                                 &nrChannels, 0);
+    if (!data)
+        throw std::runtime_error("[Texture] Failed to decode embedded texture");
+
+    GLenum intFmt, fmt;
+    if (nrChannels == 4) {
+        intFmt = sRGB ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+        fmt    = GL_RGBA;
+    } else if (nrChannels == 3) {
+        intFmt = sRGB ? GL_SRGB8 : GL_RGB8;
+        fmt    = GL_RGB;
+    } else {
+        intFmt = GL_R8;
+        fmt    = GL_RED;
+    }
+
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex->id_);
+    glTextureStorage2D(tex->id_, 1, intFmt, tex->width_, tex->height_);
+    glTextureSubImage2D(tex->id_, 0, 0, 0, tex->width_, tex->height_,
+                        fmt, GL_UNSIGNED_BYTE, data);
+    glGenerateTextureMipmap(tex->id_);
+    glTextureParameteri(tex->id_, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTextureParameteri(tex->id_, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTextureParameteri(tex->id_, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTextureParameteri(tex->id_, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    stbi_image_free(data);
+    return tex;
+}
+
 std::shared_ptr<Texture> Texture::LoadHDR(const std::string& path) {
     auto tex = std::shared_ptr<Texture>(new Texture());
     tex->target_ = GL_TEXTURE_2D;
