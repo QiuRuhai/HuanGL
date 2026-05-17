@@ -6,6 +6,7 @@
 #include "passes/ShadowPass.h"
 #include "passes/GBufferPass.h"
 #include "passes/LightingPass.h"
+#include "passes/PostProcessPass.h"
 #include "../renderer/UniformBuffer.h"
 
 namespace HuanGL {
@@ -18,10 +19,13 @@ public:
     void Resize(int width, int height);
     void Execute(const Scene& scene, const CameraData& camera);
 
+    PostProcessPass& GetPostProcess() { return postProcessPass_; }
+
 private:
-    ShadowPass   shadowPass_;
-    GBufferPass  gbufferPass_;
-    LightingPass lightingPass_;
+    ShadowPass      shadowPass_;
+    GBufferPass     gbufferPass_;
+    LightingPass    lightingPass_;
+    PostProcessPass postProcessPass_;
 };
 
 } // namespace HuanGL

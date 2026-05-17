@@ -109,7 +109,5 @@ void main() {
     vec3 specularIBL = prefiltered * (kS * envBRDF.x + envBRDF.y);
     vec3 ambient = (diffuseIBL + specularIBL) * uAmbientStrength;
     vec3 color = direct + ambient;
-    color = color / (color + vec3(1.0));
-    color = pow(color, vec3(1.0 / 2.2));
     FragColor = vec4(color, 1.0);
 }

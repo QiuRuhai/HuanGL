@@ -23,7 +23,26 @@ static const glm::mat4 kCaptureViews[6] = {
 // only needs to avoid clipping the unit cube.
 static const glm::mat4 kCaptureProj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
-void LightingPass::Init(int /*width*/, int /*height*/, const std::string& hdrPath) {
+void LightingPass::CreateHDRFBO(int w, int h) {
+    hdrFBO_ = std::make_unique<Framebuffer>(w, h);
+    auto hdrTex = Texture::Create2D(w, h, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+    hdrFBO_->AttachColor(hdrTex, 0);
+    hdrFBO_->AttachDepthRenderbuffer();
+}
+
+void LightingPass::Resize(int w, int h) {
+    width_ = w; height_ = h;
+    CreateHDRFBO(w, h);
+}
+
+std::shared_ptr<Texture> LightingPass::GetHDROutput() const {
+    return hdrFBO_->GetColor(0);
+}
+
+void LightingPass::Init(int width, int height, const std::string& hdrPath) {
+    width_ = width; height_ = height;
+    CreateHDRFBO(width, height);
+
     pbrShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
                                           "../shader/lighting/pbr_ibl.frag");
     irrShader_ = std::make_unique<Shader>("../shader/lighting/cube.vert",
@@ -145,6 +164,9 @@ void LightingPass::GenerateIBL(const std::string& hdrPath) {
 
 void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
                            const Scene& scene, const CameraData& camera) {
+    hdrFBO_->Bind();
+    Renderer::SetViewport(0, 0, width_, height_);
+    Renderer::Clear(true, true, false);
     Renderer::EnableDepthTest(false);
     Renderer::EnableCullFace(false);
 
@@ -181,6 +203,7 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     glDrawArrays(GL_TRIANGLES, 0, 3);
     dummyVAO_->Unbind();
 
+    Framebuffer::BindDefault();
     Renderer::EnableCullFace(true);
     Renderer::EnableDepthTest(true);
 }
