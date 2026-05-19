@@ -58,6 +58,14 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - Put project code in `namespace HuanGL`.
 - GL debug callbacks must be file-local functions using `GLAPIENTRY`; avoid class static callback methods on MSVC.
 - MSVC does not accept single-line ternary statements such as `{ e ? glEnable(...) : glDisable(...); }`; use `if`/`else`.
+- Reconstruct world position from depth and inverse view-proj in the lighting pass; do not write world position to a GBuffer attachment.
+- Use `sampler2DArrayShadow` for CSM and let the hardware perform the depth comparison; cascade selection uses view-space Z.
+- Tone mapping lives in `PostProcessPass`, not in the lighting shader. `LightingPass` writes raw HDR radiance to an RGBA16F target so future passes (Bloom, TAA) can read it.
+- Re-orthogonalize the TBN basis in the fragment shader, not the vertex shader. Interpolation destroys vertex-side orthogonality.
+- Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
+- `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
+- `App` registers scenes with soft failure: if a model file is missing or fails to load, the app logs and skips, continuing with the remaining registered scenes.
+- `packed`, `near`, and `far` are reserved or potentially reserved names in GLSL across drivers. Avoid them as GLSL identifiers.
 
 ## Current Progress
 
@@ -76,6 +84,36 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/renderer/UniformBuffer.h` | Header-only CameraUBO, LightsUBO, TimeUBO helpers |
 | `shader/common/uniforms.glsl` | Shared GLSL UBO definitions |
 | `src/main.cpp` | Minimal entry calling `App::Run()` |
+
+### Phase 2: Render Pipeline — Complete
+
+| File | Responsibility |
+|------|----------------|
+| `src/pipeline/RenderPipeline.h/cpp` | Pass orchestrator, owns Shadow/GBuffer/Lighting/PostProcess passes |
+| `src/pipeline/passes/ShadowPass.h/cpp` | Four-cascade CSM with `sampler2DArrayShadow` |
+| `src/pipeline/passes/GBufferPass.h/cpp` | Deferred MRT fill (RGBA8 albedo+metallic, RGBA16F normal+roughness, D24 depth) |
+| `src/pipeline/passes/LightingPass.h/cpp` | Cook-Torrance PBR + IBL (irradiance + prefilter + BRDF LUT) |
+| `src/resource/ResourceManager.h/cpp` | `weak_ptr` texture and mesh cache with GC |
+| `src/resource/MeshLoader.h/cpp` | Assimp wrapper, returns `LoadResult { mesh, materials }` |
+| `src/scene/Scene.h` | Scene interface with mesh/material/light access |
+| `src/scene/TestScene.h/cpp` | Procedural test scene (floor + spheres + PBR factor materials) |
+| `src/renderer/Schema.h` | `Mesh`, `SubMesh`, `Material`, `DirectionalLight`, `Vertex` schemas |
+| `src/core/Camera.h/cpp` | Free-fly camera, WASD plus mouse look |
+| `shader/gbuffer/*.{vert,frag}` | GBuffer fill |
+| `shader/shadow/csm.vert` | Cascade depth render |
+| `shader/lighting/*.{vert,frag}` | PBR+IBL, IBL precompute (equirect→cubemap, irradiance, prefilter, BRDF LUT), fullscreen helper |
+
+### Phase 2.5: Pipeline Polish — Complete
+
+| File | Responsibility |
+|------|----------------|
+| `src/pipeline/passes/PostProcessPass.h/cpp` | Tone mapping, gamma, debug visualization |
+| `src/scene/ModelScene.h/cpp` | Loads a model via `MeshLoader`, adds optional floor |
+| `shader/postprocess/postprocess.frag` | ACES / Reinhard / linear tone map plus seven debug modes |
+| `src/renderer/Texture.h/cpp` | Adds `Load2DFromMemory` for `.glb` embedded textures |
+| `src/resource/MeshLoader.h/cpp` | Extends to extract PBR textures and handle `*N` embedded paths |
+| `src/core/Input.h/cpp` | Adds `IsKeyJustPressed` via GLFW key callback |
+| `src/core/App.h/cpp` | Multi-scene registration with `N`-key cycling, debug-key handling, resize propagation |
 
 ## Current Directory Structure
 
@@ -105,35 +143,31 @@ Empty future directories may be absent from Git until their implementation start
 
 ## Planned Phases
 
-### Phase 2: Render Pipeline
+| Phase | Status | Theme |
+|-------|--------|-------|
+| 1 | ✅ Complete | Foundation (GLAD2, RAII wrappers, App loop) |
+| 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
+| 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
+| 3 | Planned | Scene system and ImGui debug UI |
+| 4 | Planned | Bloom, TAA, improved tone mapping |
+| 5 | Planned | RSM |
+| 6 | Planned | SSGI |
+| 7 | Planned | VXGI |
+| 8 | Planned | DDGI |
 
-- `GBufferPass` for deferred rendering
-- `ShadowPass` for cascaded shadow maps and soft shadow filtering
-- `LightingPass` for PBR and IBL
-- `ResourceManager` for texture and mesh caching
-
-### Phase 3: Scene System
-
-- SceneManager and debug UI
-- Sponza scene for GI showcase
-- Damaged Helmet scene for PBR showcase
-
-### Phase 4: Post-Processing
-
-- Bloom
-- TAA
-- ACES tone mapping
-
-### Phase 5-8: GI Algorithms
-
-- RSM
-- SSGI
-- VXGI
-- DDGI
+For phase deliverables, dependencies, and ordering rationale see
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Design Documents
 
-- Overall refactor design: `docs/superpowers/specs/2026-05-13-huangl-refactor-design.md`
-- Phase 1 plan: `docs/superpowers/plans/2026-05-13-huangl-phase1-foundation.md`
+- Refactor design: `docs/superpowers/specs/2026-05-13-huangl-refactor-design.md`
 - Repository cleanup design: `docs/superpowers/specs/2026-05-13-huangl-repository-cleanup-design.md`
+- Phase 2 pipeline design: `docs/superpowers/specs/2026-05-14-huangl-phase2-pipeline-design.md`
+- Phase 2.5 polish design: `docs/superpowers/specs/2026-05-16-huangl-phase2.5-polish-design.md`
+- Docs overhaul design: `docs/superpowers/specs/2026-05-19-huangl-docs-overhaul-design.md`
+- Phase 1 plan: `docs/superpowers/plans/2026-05-13-huangl-phase1-foundation.md`
 - Repository cleanup plan: `docs/superpowers/plans/2026-05-13-huangl-repository-cleanup.md`
+- Phase 2 pipeline plan: `docs/superpowers/plans/2026-05-14-huangl-phase2-pipeline.md`
+- Phase 2.5 polish plan: `docs/superpowers/plans/2026-05-16-huangl-phase2.5-polish.md`
+- Docs overhaul plan: `docs/superpowers/plans/2026-05-19-huangl-docs-overhaul.md`
+- Architecture and roadmap: `docs/architecture.md`
