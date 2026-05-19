@@ -6,16 +6,24 @@ The original LearnOpenGL state is preserved at git tag `archive/learnogl-v1`.
 
 ## Current Status
 
-Phase 1 is complete:
+Phases 1, 2, and 2.5 are complete. The renderer currently supports:
 
-- GLFW window and input wrappers
-- OpenGL 4.6 context creation through GLAD2
-- Renderer state helpers and GL debug output
-- RAII wrappers for shaders, buffers, textures, framebuffers, and uniform buffers
-- Shared GLSL UBO definitions in `shader/common/uniforms.glsl`
-- Minimal `App` loop that opens a window and clears the screen
+- Deferred PBR shading with metallic-roughness workflow (Cook-Torrance).
+- Image-based lighting from a single HDR equirectangular environment (diffuse
+  irradiance cubemap, prefiltered specular cubemap, BRDF LUT).
+- Cascaded shadow maps (four cascades, `sampler2DArrayShadow`, 3x3 PCF).
+- A post-processing pass with selectable tone mapping (ACES Filmic,
+  Reinhard, linear) and sRGB-approximate gamma.
+- glTF, OBJ, and FBX loading through Assimp, including PBR factor extraction,
+  normal-map sampling with TBN reconstructed in the fragment shader, and
+  packed metallic-roughness textures.
+- `.glb` embedded textures via Assimp `*N` indices.
+- Multi-scene registration with runtime cycling.
+- Seven runtime debug views: final composite, albedo, world-space normal,
+  roughness, metallic, linear depth, and shadow cascade overlay.
+- Window resize propagated through the entire pipeline.
 
-Phase 2 will introduce the render pipeline, beginning with deferred rendering infrastructure.
+For architecture, key design decisions, and the forward-looking roadmap (Phases 3 through 8), see [`docs/architecture.md`](docs/architecture.md).
 
 ## Repository Layout
 
@@ -84,6 +92,47 @@ This repository does not use `CMakePresets.json`; build commands are kept explic
 
 When new `.cpp` files are added, re-run the configure command before building because the project currently uses `GLOB_RECURSE`.
 
+## Running
+
+Models are not vendored in the repository. Place `.gltf`, `.glb`, or similar files under `resources/models/` (the directory is gitignored).
+Two known-good test assets:
+
+```powershell
+# DamagedHelmet (small, fully embedded .glb)
+curl -L -o resources/models/DamagedHelmet.glb `
+  "https://github.com/KhronosGroup/glTF-Sample-Assets/raw/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb"
+
+# Sponza (larger, multi-texture scene; uses git sparse-checkout)
+cd resources/models
+git clone --depth 1 --filter=blob:none --sparse `
+  https://github.com/KhronosGroup/glTF-Sample-Assets.git _assets
+cd _assets
+git sparse-checkout set Models/Sponza/glTF
+cd ..
+mv _assets/Models/Sponza Sponza
+rm -r -force _assets
+```
+
+`App` registers any model it finds at startup and skips the rest with a log
+message, so the binary runs even if neither model is present.
+
+Runtime controls:
+
+| Input | Action |
+|-------|--------|
+| `W` `A` `S` `D` | Camera translation |
+| `Mouse` | Camera look |
+| `N` | Cycle registered scenes |
+| `T` | Cycle tone-map operator (ACES / Reinhard / linear) |
+| `0` | Final composite |
+| `1` | Albedo |
+| `2` | World-space normal |
+| `3` | Roughness |
+| `4` | Metallic |
+| `5` | Linear depth |
+| `6` | Shadow cascade overlay |
+| `Esc` | Quit |
+
 ## Technical Direction
 
 - OpenGL 4.6 Core Profile
@@ -95,7 +144,16 @@ When new `.cpp` files are added, re-run the configure command before building be
 
 ## Planned Rendering Phases
 
-- Phase 2: Render Pipeline
-- Phase 3: Scene System
-- Phase 4: Post-Processing
-- Phase 5-8: RSM, SSGI, VXGI, and DDGI
+| Phase | Status | Theme |
+|-------|--------|-------|
+| 1 | ✅ Complete | Foundation (GLAD2, RAII wrappers, App loop) |
+| 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
+| 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
+| 3 | Planned | Scene system and ImGui debug UI |
+| 4 | Planned | Bloom, TAA, improved tone mapping |
+| 5 | Planned | RSM |
+| 6 | Planned | SSGI |
+| 7 | Planned | VXGI |
+| 8 | Planned | DDGI |
+
+For phase deliverables and ordering rationale see [`docs/architecture.md`](docs/architecture.md).
