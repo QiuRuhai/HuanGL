@@ -38,6 +38,13 @@ Per the spec's editing rules:
 - Do not add post-hoc commentary on what changed during execution.
 - Do not add a "results" section. This is a frozen artifact.
 
+**Source-file handling.** The original plan lives at a user-local path
+(`C:\Users\<...>\.claude\plans\calm-fluttering-clarke.md`) under a
+gitignored directory. Leave it in place; deletion is not required and
+not part of this task. The content embedded below is the full source
+verbatim apart from the heading rename, so the engineer does not need
+to read the source file to complete this task.
+
 - [ ] **Step 1: Create the archived plan file**
 
 Create `docs/superpowers/plans/2026-05-16-huangl-phase2.5-polish.md` with the following content. The only deviation from the source is the top-level heading on line 1. (The outer fence below uses four backticks because the embedded content itself contains 3-backtick code fences.)
@@ -803,6 +810,15 @@ grep -E "TBD|TODO|FIXME" docs/architecture.md
 
 Expected: no output.
 
+```bash
+# 5. Length matches the spec budget for this doc
+wc -l docs/architecture.md
+```
+
+Expected: 300–500 lines per the spec. If significantly shorter, a
+section was skipped; if significantly longer, sections grew beyond
+their summary intent and should be tightened.
+
 - [ ] **Step 10: Commit**
 
 ```bash
@@ -853,9 +869,15 @@ different, stop and reconcile.
 
 - [ ] **Step 2: Extend the `Key Technical Decisions` section**
 
-Locate the existing `## Key Technical Decisions` section (around line 53
-in the baseline). After the existing bullet list, append these new
-bullets:
+Open `AGENTS.md`. The `## Key Technical Decisions` section currently
+contains six bullets. The last bullet in that list reads:
+
+```
+- MSVC does not accept single-line ternary statements such as `{ e ? glEnable(...) : glDisable(...); }`; use `if`/`else`.
+```
+
+Immediately after that line (and before the blank line that precedes
+the next `## Current Progress` heading), append these new bullets:
 
 ```markdown
 - Reconstruct world position from depth and inverse view-proj in the lighting pass; do not write world position to a GBuffer attachment.
@@ -872,9 +894,18 @@ Do not modify the existing bullets above; they remain accurate.
 
 - [ ] **Step 3: Replace the `Current Progress` section**
 
-Locate `## Current Progress` (around line 62 in the baseline). Keep the
-existing `### Phase 1: Foundation Complete` table. Below that existing
-table (and any blank line that follows it), append two new subsections:
+Open `AGENTS.md`. The `## Current Progress` section currently contains
+a single subsection `### Phase 1: Foundation Complete` followed by a
+file table. The last row of that table reads:
+
+```
+| `src/main.cpp` | Minimal entry calling `App::Run()` |
+```
+
+Keep everything in this section up to and including that row. After
+that row (and any blank line that follows it), and BEFORE the next
+section heading `## Current Directory Structure`, append two new
+subsections:
 
 ````markdown
 
@@ -911,10 +942,13 @@ table (and any blank line that follows it), append two new subsections:
 
 - [ ] **Step 4: Replace the `Planned Phases` section body**
 
-Locate `## Planned Phases` (around line 106 in the baseline). Replace
-the entire body of that section (everything from `### Phase 2: Render
-Pipeline` down to the end of the `### Phase 5-8: GI Algorithms` block)
-with this:
+Open `AGENTS.md`. The `## Planned Phases` section currently contains
+four subsections, in order: `### Phase 2: Render Pipeline`,
+`### Phase 3: Scene System`, `### Phase 4: Post-Processing`, and
+`### Phase 5-8: GI Algorithms`. Replace everything between the
+`## Planned Phases` heading and the next top-level section
+`## Design Documents` (i.e. the four subsections and any blank lines
+between them) with this:
 
 ```markdown
 | Phase | Status | Theme |
@@ -937,8 +971,10 @@ Leave the `## Planned Phases` heading itself in place.
 
 - [ ] **Step 5: Replace the `Design Documents` section body**
 
-Locate `## Design Documents` (around line 134 in the baseline). Replace
-the existing bullet list with this complete inventory:
+Open `AGENTS.md`. The `## Design Documents` section is the last
+section in the file. Replace its body (the existing bullet list — every
+line after the `## Design Documents` heading through the end of the
+file) with this complete inventory:
 
 ```markdown
 - Refactor design: `docs/superpowers/specs/2026-05-13-huangl-refactor-design.md`
@@ -962,7 +998,11 @@ Run:
 wc -l AGENTS.md
 ```
 
-Expected: 220–260 lines.
+Expected: 160–200 lines (up from a 139-line baseline; the actual added
+content is two module tables plus eight new technical-decision bullets
+plus the design-doc inventory). If the count lands outside this range,
+something major was added or omitted — re-read the spec sections rather
+than nudging the threshold.
 
 ```bash
 # All three progress subsections present
@@ -1032,10 +1072,16 @@ Direction section are unchanged.
 
 - [ ] **Step 1: Replace the `Current Status` section**
 
-Locate `## Current Status` (around line 7 in the baseline). Replace the
-entire body of that section (from the line after the heading through
-the line `Phase 2 will introduce the render pipeline, beginning with
-deferred rendering infrastructure.`) with this:
+Open `README.md`. The `## Current Status` section currently ends with
+this exact line:
+
+```
+Phase 2 will introduce the render pipeline, beginning with deferred rendering infrastructure.
+```
+
+Replace everything between the `## Current Status` heading and the next
+top-level section `## Repository Layout` (i.e. all the bullets, the
+prose, and the blank lines in between) with this:
 
 ```markdown
 Phases 1, 2, and 2.5 are complete. The renderer currently supports:
@@ -1065,13 +1111,17 @@ Leave the `## Current Status` heading itself in place.
 
 - [ ] **Step 2: Insert a new `Running` section after the build instructions**
 
-Locate the line that reads `When new \`.cpp\` files are added, re-run
-the configure command before building because the project currently
-uses \`GLOB_RECURSE\`.` (near the end of the Build section, around line
-85 in the baseline). Insert a blank line after it, then insert this new
-section before the existing `## Technical Direction` heading. (The outer
-fence below uses four backticks because the embedded content contains
-3-backtick code fences.)
+Open `README.md`. The Build section ends with this exact line:
+
+```
+When new `.cpp` files are added, re-run the configure command before building because the project currently uses `GLOB_RECURSE`.
+```
+
+Immediately after that line and the blank line that follows it (so that
+the new section sits on its own), insert the new `## Running` section
+below, placed before the existing `## Technical Direction` heading.
+(The outer fence below uses four backticks because the embedded content
+contains 3-backtick code fences.)
 
 ````markdown
 ## Running
@@ -1119,8 +1169,9 @@ Runtime controls:
 
 - [ ] **Step 3: Replace the `Planned Rendering Phases` section body**
 
-Locate `## Planned Rendering Phases` (around line 96 in the baseline).
-Replace the existing bullet list with this:
+Open `README.md`. The `## Planned Rendering Phases` section is the last
+section in the file. Replace its body (the existing bullet list — every
+line after the heading through the end of the file) with this:
 
 ```markdown
 | Phase | Status | Theme |
