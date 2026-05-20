@@ -53,10 +53,14 @@ void DebugUI::Draw(ApplicationState& state) {
         ImGui::Checkbox("Bloom", &state.renderSettings.bloom.enabled);
         ImGui::DragFloat("Bloom Threshold", &state.renderSettings.bloom.threshold,
                          0.05f, 0.0f, 20.0f);
+        ImGui::DragFloat("Bloom Soft Knee", &state.renderSettings.bloom.softKnee,
+                         0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Bloom Intensity", &state.renderSettings.bloom.intensity,
                          0.01f, 0.0f, 5.0f);
         ImGui::SliderInt("Bloom Radius", &state.renderSettings.bloom.radius,
                          1, 16);
+        ImGui::SliderInt("Bloom Mips", &state.renderSettings.bloom.mipCount,
+                         1, 6);
         ImGui::DragFloat("Exposure", &state.renderSettings.exposure,
                          0.01f, 0.0f, 10.0f);
     }

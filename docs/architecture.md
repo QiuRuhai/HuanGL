@@ -20,12 +20,13 @@ over engine-grade flexibility.
 
 ## Current Capability
 
-As of Phase 2.5 the renderer can load glTF (external or `.glb` embedded),
-OBJ, and FBX assets through Assimp; render them through a deferred PBR
-pipeline with cascaded shadow maps, image-based lighting, and a
-selectable tone-map operator; and switch between registered scenes at
-runtime. Seven debug visualization modes inspect the GBuffer channels,
-linear depth, and shadow cascades.
+As of the Phase 4 Bloom step the renderer can load glTF (external or
+`.glb` embedded), OBJ, and FBX assets through Assimp; render them through
+a deferred PBR pipeline with cascaded shadow maps, image-based lighting,
+multi-mip HDR Bloom, and a selectable tone-map operator; and switch
+between registered scenes at runtime. Debug visualization modes inspect
+the GBuffer channels, linear depth, shadow cascades, and Bloom
+contribution.
 
 Runtime controls:
 
@@ -42,6 +43,7 @@ Runtime controls:
 | `4` | Metallic |
 | `5` | Linear depth |
 | `6` | Shadow cascade overlay |
+| `7` | Bloom contribution |
 | `Esc` | Quit |
 
 ## Render Pipeline
@@ -67,7 +69,7 @@ World → RenderSceneView + FrameContext
              │               writes LightingOutputs (RGBA16F HDR target)
              ▼
         BloomTechnique     → BloomOutputs
-             │               half-resolution blurred bright buffer
+             │               multi-mip HDR bloom texture (level 0 composite)
              ▼
         PostProcessPass    ← reads Lighting/GBuffer/Shadow/Bloom outputs
              │               composite + tone map + gamma + debug overlay
@@ -131,7 +133,8 @@ rewrite, which is acceptable for a learning project.
 
 **Tone mapping in a separate pass.** LightingPass writes raw HDR
 radiance to an RGBA16F target; PostProcessPass applies the tone map and
-gamma. Keeps the HDR signal available for future passes (Bloom, TAA).
+gamma. Keeps the HDR signal available for post-lighting techniques such
+as Bloom and TAA.
 
 **Concrete technique modules.** Optional algorithms such as Bloom, TAA,
 RSM, SSGI, VXGI, and DDGI live under `src/pipeline/techniques/`.
@@ -167,7 +170,7 @@ prevent the app from starting with the remaining registered scenes.
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
-| 3.5 | In Progress | Concrete technique module boundary |
+| 3.5 | ✅ Initial Complete | Concrete technique module boundary |
 | 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
@@ -215,9 +218,9 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 **Goal.** First real post-processing chain on top of the HDR target.
 
 **Deliverables.**
-- Bright-pass extract + separable Gaussian blur (or Kawase) producing a
-  half-resolution bloom buffer that is added back to the HDR target
-  pre-tone-map.
+- Multi-mip HDR Bloom through `BloomTechnique`: soft-knee bright
+  extraction, filtered downsample chain, upsample-and-combine chain, and
+  final contribution composited pre-tone-map.
 - Temporal Anti-Aliasing with a history buffer and jittered projection
   matrix; resolves to the same RGBA16F target.
 - Additional tone-map operators (Uncharted 2 filmic, AgX) selectable

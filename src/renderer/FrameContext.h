@@ -31,8 +31,10 @@ inline int ToShaderDebugView(DebugView view) {
 struct BloomSettings {
     bool enabled = true;
     float threshold = 1.0f;
+    float softKnee = 0.5f;
     float intensity = 0.08f;
     int radius = 5;
+    int mipCount = 5;
 };
 
 struct RenderSettings {
