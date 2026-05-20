@@ -10,6 +10,7 @@ class Window;
 class RenderPipeline;
 class ResourceManager;
 class ImGuiLayer;
+class DebugUI;
 
 class App {
 public:
@@ -27,12 +28,12 @@ private:
     void Render(float dt);
     void RegisterScenes();
     FrameContext BuildFrameContext(float dt) const;
-    void BuildDebugPanel();
 
     std::unique_ptr<Window>          window_;
     std::unique_ptr<RenderPipeline>  pipeline_;
     std::unique_ptr<ResourceManager> resourceManager_;
     std::unique_ptr<ImGuiLayer>      imguiLayer_;
+    std::unique_ptr<DebugUI>         debugUI_;
 
     ApplicationState state_;
     InputController inputController_;

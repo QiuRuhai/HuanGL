@@ -7,12 +7,11 @@
 #include "../scene/TestScene.h"
 #include "../scene/ModelScene.h"
 #include "../resource/ResourceManager.h"
+#include "../ui/DebugUI.h"
 #include "../ui/ImGuiLayer.h"
 #include <GLFW/glfw3.h>
-#include <glm/geometric.hpp>
 #include <cstdio>
 #include <filesystem>
-#include <imgui.h>
 
 namespace HuanGL {
 
@@ -43,6 +42,7 @@ void App::Init() {
     Input::Init(window_->GetHandle());
     imguiLayer_ = std::make_unique<ImGuiLayer>();
     imguiLayer_->Init(window_->GetHandle());
+    debugUI_ = std::make_unique<DebugUI>();
     Renderer::Init();
     Renderer::SetViewport(0, 0, window_->GetWidth(), window_->GetHeight());
 
@@ -85,65 +85,11 @@ void App::Run() {
         Render(dt);
 
         imguiLayer_->BeginFrame();
-        BuildDebugPanel();
+        debugUI_->Draw(state_);
         imguiLayer_->EndFrame();
 
         window_->SwapBuffers();
     }
-}
-
-void App::BuildDebugPanel() {
-    ImGui::Begin("HuanGL Debug");
-
-    if (ImGui::CollapsingHeader("Render")) {
-        static const char* toneModes[] = { "ACES", "Reinhard", "None" };
-        int toneMode = ToShaderToneMapMode(state_.renderSettings.toneMapMode);
-        if (ImGui::Combo("Tone Map", &toneMode, toneModes, 3))
-            state_.renderSettings.toneMapMode = static_cast<ToneMapMode>(toneMode);
-
-        static const char* debugModes[] = {
-            "Final", "Albedo", "Normal", "Roughness", "Metallic", "Depth", "Cascades"
-        };
-        int debugMode = ToShaderDebugView(state_.debugSettings.view);
-        if (ImGui::Combo("Debug Mode", &debugMode, debugModes, 7))
-            state_.debugSettings.view = static_cast<DebugView>(debugMode);
-
-        ImGui::DragFloat("Ambient Strength", &state_.renderSettings.ambientStrength,
-                         0.01f, 0.0f, 2.0f);
-    }
-
-    if (ImGui::CollapsingHeader("Lighting")) {
-        World* world = state_.sceneRegistry.GetActiveWorld();
-        if (world) {
-            auto& sun = world->GetSunLight();
-            ImGui::DragFloat3("Direction", &sun.direction.x, 0.01f, -1.f, 1.f);
-            if (glm::length(sun.direction) > 0.0f)
-                sun.direction = glm::normalize(sun.direction);
-            ImGui::ColorEdit3("Color", &sun.color.r);
-            ImGui::DragFloat("Intensity", &sun.intensity, 0.05f, 0.f, 20.f);
-        }
-    }
-
-    if (ImGui::CollapsingHeader("Camera")) {
-        float fov = state_.camera.GetFov();
-        if (ImGui::SliderFloat("FOV", &fov, 30.f, 120.f))
-            state_.camera.SetFov(fov);
-    }
-
-    if (ImGui::CollapsingHeader("Scene")) {
-        if (!state_.sceneRegistry.Empty()) {
-            ImGui::Text("Active: %s", state_.sceneRegistry.GetActiveName().c_str());
-            if (ImGui::Button("Next"))
-                state_.sceneRegistry.Cycle();
-        }
-    }
-
-    if (ImGui::CollapsingHeader("Stats")) {
-        ImGui::Text("FPS: %.1f", state_.frameStats.fps);
-        ImGui::Text("Frame: %.2f ms", state_.frameStats.frameTimeMs);
-    }
-
-    ImGui::End();
 }
 
 void App::Update(float dt) {
