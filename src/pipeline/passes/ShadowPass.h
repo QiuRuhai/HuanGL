@@ -1,21 +1,15 @@
 #pragma once
 #include <memory>
 #include <array>
-#include <glm/glm.hpp>
 #include "../../renderer/Schema.h"
 #include "../../renderer/UniformBuffer.h"
+#include "../CascadeData.h"
 
 namespace HuanGL {
 
 class Shader;
 class Framebuffer;
 class Scene;
-
-struct CascadeData {
-    glm::mat4 viewProj;
-    float     farPlane = 0.f;
-    float     pad[3]   = {};
-};
 
 class ShadowPass {
 public:
