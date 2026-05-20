@@ -3,14 +3,21 @@
 #include <algorithm>
 #include <glm/vec2.hpp>
 #include <stdexcept>
+#include <string>
 
 namespace HuanGL {
+
+namespace {
+constexpr int kMaxBloomMips = 6;
+}
 
 void BloomTechnique::Init(int width, int height) {
     extractShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
                                               "../shader/bloom/bright_extract.frag");
-    blurShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                           "../shader/bloom/blur.frag");
+    downsampleShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
+                                                 "../shader/bloom/downsample.frag");
+    upsampleShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
+                                               "../shader/bloom/upsample.frag");
     dummyVAO_ = std::make_unique<VertexArray>();
     CreateResources(width, height);
 }
@@ -19,43 +26,44 @@ void BloomTechnique::Resize(int width, int height) {
     CreateResources(width, height);
 }
 
+BloomTechnique::BloomMip BloomTechnique::CreateMip(int width, int height,
+                                                   const char* label) const {
+    BloomMip mip;
+    mip.width = std::max(1, width);
+    mip.height = std::max(1, height);
+    mip.texture = Texture::Create2D(mip.width, mip.height, GL_RGBA16F, GL_RGBA, GL_FLOAT);
+    mip.texture->SetFilter(GL_LINEAR, GL_LINEAR);
+    mip.texture->SetWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+
+    mip.fbo = std::make_unique<Framebuffer>(mip.width, mip.height);
+    mip.fbo->AttachColor(mip.texture);
+    mip.fbo->SetDrawBuffers({GL_COLOR_ATTACHMENT0});
+    if (!mip.fbo->IsComplete()) {
+        throw std::runtime_error(std::string("[BloomTechnique] ") +
+                                 label + " framebuffer incomplete");
+    }
+    return mip;
+}
+
 void BloomTechnique::CreateResources(int width, int height) {
-    width_ = std::max(1, width / 2);
-    height_ = std::max(1, height / 2);
-
-    auto makeTarget = [this]() {
-        auto texture = Texture::Create2D(width_, height_, GL_RGBA16F, GL_RGBA, GL_FLOAT);
-        texture->SetFilter(GL_LINEAR, GL_LINEAR);
-        texture->SetWrap(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
-        return texture;
-    };
-
-    brightTexture_ = makeTarget();
-    pingTexture_ = makeTarget();
-    pongTexture_ = makeTarget();
-
-    brightFBO_ = std::make_unique<Framebuffer>(width_, height_);
-    brightFBO_->AttachColor(brightTexture_);
-    brightFBO_->SetDrawBuffers({GL_COLOR_ATTACHMENT0});
-    if (!brightFBO_->IsComplete()) {
-        throw std::runtime_error("[BloomTechnique] bright framebuffer incomplete");
-    }
-
-    pingFBO_ = std::make_unique<Framebuffer>(width_, height_);
-    pingFBO_->AttachColor(pingTexture_);
-    pingFBO_->SetDrawBuffers({GL_COLOR_ATTACHMENT0});
-    if (!pingFBO_->IsComplete()) {
-        throw std::runtime_error("[BloomTechnique] ping framebuffer incomplete");
-    }
-
-    pongFBO_ = std::make_unique<Framebuffer>(width_, height_);
-    pongFBO_->AttachColor(pongTexture_);
-    pongFBO_->SetDrawBuffers({GL_COLOR_ATTACHMENT0});
-    if (!pongFBO_->IsComplete()) {
-        throw std::runtime_error("[BloomTechnique] pong framebuffer incomplete");
-    }
-
+    downMips_.clear();
+    upMips_.clear();
     outputs_ = {};
+
+    int mipWidth = std::max(1, width / 2);
+    int mipHeight = std::max(1, height / 2);
+
+    for (int i = 0; i < kMaxBloomMips; ++i) {
+        downMips_.push_back(CreateMip(mipWidth, mipHeight, "downsample"));
+        upMips_.push_back(CreateMip(mipWidth, mipHeight, "upsample"));
+
+        if (mipWidth == 1 && mipHeight == 1) {
+            break;
+        }
+
+        mipWidth = std::max(1, mipWidth / 2);
+        mipHeight = std::max(1, mipHeight / 2);
+    }
 }
 
 void BloomTechnique::DrawFullscreen() const {
@@ -64,49 +72,83 @@ void BloomTechnique::DrawFullscreen() const {
     dummyVAO_->Unbind();
 }
 
-BloomOutputs BloomTechnique::Execute(const FrameContext& frame,
-                                     const PipelineOutputs& inputs,
-                                     const BloomSettings& settings) {
-    outputs_ = {};
-    if (!settings.enabled || !inputs.lighting.hdrColor) {
-        return outputs_;
-    }
-
-    const int radius = std::clamp(settings.radius, 1, 16);
-
-    Renderer::SetViewport(0, 0, width_, height_);
-    Renderer::EnableDepthTest(false);
-    Renderer::EnableCullFace(false);
-
-    brightFBO_->Bind();
-    Renderer::Clear(true, false, false);
-    extractShader_->Use();
-    extractShader_->SetFloat("uThreshold", settings.threshold);
-    inputs.lighting.hdrColor->Bind(0);
-    DrawFullscreen();
-
-    blurShader_->Use();
-    blurShader_->SetInt("uRadius", radius);
-    blurShader_->SetVec2("uTexelSize", glm::vec2(1.0f / width_, 1.0f / height_));
-
-    pingFBO_->Bind();
-    Renderer::Clear(true, false, false);
-    blurShader_->SetBool("uHorizontal", true);
-    brightTexture_->Bind(0);
-    DrawFullscreen();
-
-    pongFBO_->Bind();
-    Renderer::Clear(true, false, false);
-    blurShader_->SetBool("uHorizontal", false);
-    pingTexture_->Bind(0);
-    DrawFullscreen();
-
+void BloomTechnique::RestoreFrameState(const FrameContext& frame) const {
     Framebuffer::BindDefault();
     Renderer::SetViewport(0, 0, frame.width, frame.height);
     Renderer::EnableCullFace(true);
     Renderer::EnableDepthTest(true);
+}
 
-    outputs_.bloom = pongTexture_;
+BloomOutputs BloomTechnique::Execute(const FrameContext& frame,
+                                     const PipelineOutputs& inputs,
+                                     const BloomSettings& settings) {
+    outputs_ = {};
+    if (!settings.enabled || !inputs.lighting.hdrColor || downMips_.empty()) {
+        return outputs_;
+    }
+
+    const int activeCount = std::clamp(settings.mipCount, 1,
+                                       static_cast<int>(downMips_.size()));
+    const float upsampleRadius = std::clamp(static_cast<float>(settings.radius),
+                                            0.25f, 16.0f);
+
+    Renderer::EnableDepthTest(false);
+    Renderer::EnableCullFace(false);
+
+    BloomMip& firstMip = downMips_[0];
+    firstMip.fbo->Bind();
+    Renderer::SetViewport(0, 0, firstMip.width, firstMip.height);
+    Renderer::Clear(true, false, false);
+    extractShader_->Use();
+    extractShader_->SetFloat("uThreshold", settings.threshold);
+    extractShader_->SetFloat("uSoftKnee", settings.softKnee);
+    inputs.lighting.hdrColor->Bind(0);
+    DrawFullscreen();
+
+    downsampleShader_->Use();
+    for (int i = 1; i < activeCount; ++i) {
+        const BloomMip& source = downMips_[i - 1];
+        BloomMip& target = downMips_[i];
+
+        target.fbo->Bind();
+        Renderer::SetViewport(0, 0, target.width, target.height);
+        Renderer::Clear(true, false, false);
+        downsampleShader_->SetVec2("uTexelSize",
+                                   glm::vec2(1.0f / source.width,
+                                             1.0f / source.height));
+        source.texture->Bind(0);
+        DrawFullscreen();
+    }
+
+    if (activeCount == 1) {
+        RestoreFrameState(frame);
+        outputs_.bloom = downMips_[0].texture;
+        return outputs_;
+    }
+
+    upsampleShader_->Use();
+    for (int i = activeCount - 2; i >= 0; --i) {
+        const BloomMip& lowSource = (i == activeCount - 2)
+            ? downMips_[i + 1]
+            : upMips_[i + 1];
+        const BloomMip& highSource = downMips_[i];
+        BloomMip& target = upMips_[i];
+
+        target.fbo->Bind();
+        Renderer::SetViewport(0, 0, target.width, target.height);
+        Renderer::Clear(true, false, false);
+        upsampleShader_->SetVec2("uLowTexelSize",
+                                 glm::vec2(1.0f / lowSource.width,
+                                           1.0f / lowSource.height));
+        upsampleShader_->SetFloat("uRadius", upsampleRadius);
+        lowSource.texture->Bind(0);
+        highSource.texture->Bind(1);
+        DrawFullscreen();
+    }
+
+    RestoreFrameState(frame);
+
+    outputs_.bloom = upMips_[0].texture;
     return outputs_;
 }
 
