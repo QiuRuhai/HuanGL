@@ -60,11 +60,14 @@ static std::shared_ptr<Mesh> BuildMesh(const std::vector<Vertex>& verts,
 }
 
 void TestScene::Init(ResourceManager& /*rm*/) {
+    world_.Clear();
+
     // Materials: 0=rusty iron, 1=copper, 2=gold, 3=plaster
-    materials_.push_back({{},{},{},{}, {0.56f,0.36f,0.25f,1}, 0.8f, 0.0f});
-    materials_.push_back({{},{},{},{}, {0.95f,0.64f,0.54f,1}, 0.4f, 1.0f});
-    materials_.push_back({{},{},{},{}, {1.0f,0.84f,0.0f,1},  0.1f, 1.0f});
-    materials_.push_back({{},{},{},{}, {0.9f,0.9f,0.9f,1},   0.95f,0.0f});
+    auto& materials = world_.GetMaterials();
+    materials.push_back({{},{},{},{}, {0.56f,0.36f,0.25f,1}, 0.8f, 0.0f});
+    materials.push_back({{},{},{},{}, {0.95f,0.64f,0.54f,1}, 0.4f, 1.0f});
+    materials.push_back({{},{},{},{}, {1.0f,0.84f,0.0f,1},  0.1f, 1.0f});
+    materials.push_back({{},{},{},{}, {0.9f,0.9f,0.9f,1},   0.95f,0.0f});
 
     // Floor
     float h = 10.f;
@@ -72,30 +75,36 @@ void TestScene::Init(ResourceManager& /*rm*/) {
         {{-h,0,-h},{0,1,0},{0,0},{1,0,0}}, {{ h,0,-h},{0,1,0},{1,0},{1,0,0}},
         {{ h,0, h},{0,1,0},{1,1},{1,0,0}}, {{-h,0, h},{0,1,0},{0,1},{1,0,0}},
     };
-    meshesOwned_.push_back(BuildMesh(pv, {0,1,2, 0,2,3}, 3));
-    modelMatrices_.push_back(glm::mat4(1));
+    auto& floor = world_.CreateEntity("Floor");
+    floor.meshRenderer = MeshRenderer { BuildMesh(pv, {0,1,2, 0,2,3}, 3) };
 
     // Spheres
     auto sv = GenSphere(32, 64, 1.0f);
     auto si = GenSphereIdx(32, 64);
-    meshesOwned_.push_back(BuildMesh(sv, si, 0));
-    modelMatrices_.push_back(glm::translate(glm::mat4(1), {-3, 2, 0}));
-    meshesOwned_.push_back(BuildMesh(sv, si, 1));
-    modelMatrices_.push_back(glm::translate(glm::mat4(1), { 0, 2, 0}));
-    meshesOwned_.push_back(BuildMesh(sv, si, 2));
-    modelMatrices_.push_back(glm::translate(glm::mat4(1), { 3, 2, 0}));
+    auto& ironSphere = world_.CreateEntity("Rusty Iron Sphere");
+    ironSphere.transform.translation = {-3.0f, 2.0f, 0.0f};
+    ironSphere.meshRenderer = MeshRenderer { BuildMesh(sv, si, 0) };
+    auto& copperSphere = world_.CreateEntity("Copper Sphere");
+    copperSphere.transform.translation = {0.0f, 2.0f, 0.0f};
+    copperSphere.meshRenderer = MeshRenderer { BuildMesh(sv, si, 1) };
+    auto& goldSphere = world_.CreateEntity("Gold Sphere");
+    goldSphere.transform.translation = {3.0f, 2.0f, 0.0f};
+    goldSphere.meshRenderer = MeshRenderer { BuildMesh(sv, si, 2) };
 
     // Boxes
     auto cv = GenSphere(4, 4, 0.6f);
     auto ci = GenSphereIdx(4, 4);
-    meshesOwned_.push_back(BuildMesh(cv, ci, 3));
-    modelMatrices_.push_back(glm::translate(glm::mat4(1), {-5, 1.5f, 3}));
-    meshesOwned_.push_back(BuildMesh(cv, ci, 3));
-    modelMatrices_.push_back(glm::translate(glm::mat4(1), { 5, 1.5f, 3}));
+    auto& leftBox = world_.CreateEntity("Left Low-poly Sphere");
+    leftBox.transform.translation = {-5.0f, 1.5f, 3.0f};
+    leftBox.meshRenderer = MeshRenderer { BuildMesh(cv, ci, 3) };
+    auto& rightBox = world_.CreateEntity("Right Low-poly Sphere");
+    rightBox.transform.translation = {5.0f, 1.5f, 3.0f};
+    rightBox.meshRenderer = MeshRenderer { BuildMesh(cv, ci, 3) };
 
-    sunLight_.direction = glm::normalize(glm::vec3(0.4f, -1.0f, -0.3f));
-    sunLight_.color     = {1.0f, 0.95f, 0.85f};
-    sunLight_.intensity = 8.0f;
+    auto& sun = world_.GetSunLight();
+    sun.direction = glm::normalize(glm::vec3(0.4f, -1.0f, -0.3f));
+    sun.color     = {1.0f, 0.95f, 0.85f};
+    sun.intensity = 8.0f;
 
     SyncPtrs();
 }

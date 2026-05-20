@@ -50,15 +50,18 @@ ModelScene::ModelScene(std::string modelPath, std::string sceneName,
     , modelScale_(modelScale) {}
 
 void ModelScene::Init(ResourceManager& /*rm*/) {
+    world_.Clear();
+
     // Load model (mesh + materials). Throws if file missing.
     LoadResult loaded = MeshLoader::Load(modelPath_);
 
     // Append loaded materials. SubMesh.materialIndex from MeshLoader is
     // already local-relative (0..N), and since we add the model BEFORE the
     // floor material, the indices stay valid.
-    const uint32_t modelMaterialBase = (uint32_t)materials_.size();
+    auto& materials = world_.GetMaterials();
+    const uint32_t modelMaterialBase = static_cast<uint32_t>(materials.size());
     for (auto& mat : loaded.materials) {
-        materials_.push_back(std::move(mat));
+        materials.push_back(std::move(mat));
     }
 
     // If the model brought materials, its sub-meshes reference them by local
@@ -72,9 +75,9 @@ void ModelScene::Init(ResourceManager& /*rm*/) {
     }
 
     // Add the loaded model with a uniform scale and Y-up orientation.
-    meshesOwned_.push_back(loaded.mesh);
-    modelMatrices_.push_back(
-        glm::scale(glm::mat4(1.0f), glm::vec3(modelScale_)));
+    auto& model = world_.CreateEntity(sceneName_);
+    model.transform.scale = {modelScale_, modelScale_, modelScale_};
+    model.meshRenderer = MeshRenderer { loaded.mesh };
 
     // Optional: add a simple plaster floor with its own material slot.
     if (addFloor_) {
@@ -82,19 +85,20 @@ void ModelScene::Init(ResourceManager& /*rm*/) {
         floorMat.baseColorFactor = {0.7f, 0.7f, 0.7f, 1.0f};
         floorMat.roughnessFactor = 0.9f;
         floorMat.metallicFactor  = 0.0f;
-        uint32_t floorMatIdx = (uint32_t)materials_.size();
-        materials_.push_back(std::move(floorMat));
+        uint32_t floorMatIdx = static_cast<uint32_t>(materials.size());
+        materials.push_back(std::move(floorMat));
 
         // Floor sits at y = -1 to give camera headroom; scale model-relative.
-        meshesOwned_.push_back(BuildFloor(floorMatIdx, 10.0f));
-        modelMatrices_.push_back(
-            glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
+        auto& floor = world_.CreateEntity("Floor");
+        floor.transform.translation = {0.0f, -1.0f, 0.0f};
+        floor.meshRenderer = MeshRenderer { BuildFloor(floorMatIdx, 10.0f) };
     }
 
     // Sun light: angled so the model casts a visible shadow on the floor.
-    sunLight_.direction = glm::normalize(glm::vec3(0.4f, -1.0f, -0.3f));
-    sunLight_.color     = {1.0f, 0.95f, 0.85f};
-    sunLight_.intensity = 6.0f;
+    auto& sun = world_.GetSunLight();
+    sun.direction = glm::normalize(glm::vec3(0.4f, -1.0f, -0.3f));
+    sun.color     = {1.0f, 0.95f, 0.85f};
+    sun.intensity = 6.0f;
 
     SyncPtrs();
 }

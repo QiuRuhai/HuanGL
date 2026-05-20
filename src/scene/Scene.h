@@ -1,8 +1,5 @@
 #pragma once
-#include <vector>
-#include <memory>
-#include <glm/glm.hpp>
-#include "../renderer/Schema.h"
+#include "World.h"
 
 namespace HuanGL {
 
@@ -12,28 +9,42 @@ class Scene {
 public:
     virtual ~Scene() = default;
     virtual void Init(ResourceManager& rm) = 0;
-    virtual void Update(float dt) { (void)dt; }
+    virtual void Update(float dt) { world_.Update(dt); }
 
-    size_t GetMeshCount() const { return meshPtrs_.size(); }
-    Mesh*  GetMesh(size_t i) const { return meshPtrs_[i]; }
-    glm::mat4 GetModelMatrix(size_t i) const { return modelMatrices_[i]; }
+    World& GetWorld() { return world_; }
+    const World& GetWorld() const { return world_; }
 
-    const std::vector<Material>&    GetMaterials() const { return materials_; }
-    const DirectionalLight&         GetSunLight()  const { return sunLight_; }
-    DirectionalLight&               GetMutableSunLight() { return sunLight_; }
-    const glm::vec3&                GetAmbient()   const { return ambient_; }
+    RenderSceneView BuildRenderSceneView() const {
+        return world_.BuildRenderSceneView();
+    }
+
+    size_t GetMeshCount() const { return legacyView_.renderables.size(); }
+    Mesh* GetMesh(size_t i) const {
+        return const_cast<Mesh*>(legacyView_.renderables[i].mesh);
+    }
+    glm::mat4 GetModelMatrix(size_t i) const {
+        return legacyView_.renderables[i].modelMatrix;
+    }
+
+    const std::vector<Material>& GetMaterials() const {
+        return world_.GetMaterials();
+    }
+    const DirectionalLight& GetSunLight() const {
+        return world_.GetSunLight();
+    }
+    DirectionalLight& GetMutableSunLight() {
+        return world_.GetSunLight();
+    }
+    const glm::vec3& GetAmbient() const {
+        return world_.GetAmbient();
+    }
 
 protected:
-    std::vector<std::shared_ptr<Mesh>> meshesOwned_;
-    std::vector<Mesh*>                 meshPtrs_;
-    std::vector<glm::mat4>             modelMatrices_;
-    std::vector<Material>              materials_;
-    DirectionalLight                   sunLight_;
-    glm::vec3                          ambient_ = {0.03f, 0.03f, 0.05f};
+    World world_;
+    RenderSceneView legacyView_;
 
     void SyncPtrs() {
-        meshPtrs_.clear();
-        for (auto& m : meshesOwned_) meshPtrs_.push_back(m.get());
+        legacyView_ = world_.BuildRenderSceneView();
     }
 };
 
