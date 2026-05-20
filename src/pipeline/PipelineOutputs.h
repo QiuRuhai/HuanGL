@@ -22,10 +22,15 @@ struct LightingOutputs {
     std::shared_ptr<Texture> hdrColor;
 };
 
+struct BloomOutputs {
+    std::shared_ptr<Texture> bloom;
+};
+
 struct PipelineOutputs {
     ShadowOutputs shadow;
     GBufferOutputs gbuffer;
     LightingOutputs lighting;
+    BloomOutputs bloom;
 };
 
 } // namespace HuanGL

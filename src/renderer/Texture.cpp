@@ -171,4 +171,14 @@ void Texture::GenerateMipmaps() const {
     glGenerateTextureMipmap(id_); // DSA
 }
 
+void Texture::SetFilter(GLenum minFilter, GLenum magFilter) const {
+    glTextureParameteri(id_, GL_TEXTURE_MIN_FILTER, minFilter);
+    glTextureParameteri(id_, GL_TEXTURE_MAG_FILTER, magFilter);
+}
+
+void Texture::SetWrap(GLenum wrapS, GLenum wrapT) const {
+    glTextureParameteri(id_, GL_TEXTURE_WRAP_S, wrapS);
+    glTextureParameteri(id_, GL_TEXTURE_WRAP_T, wrapT);
+}
+
 } // namespace HuanGL

@@ -33,6 +33,8 @@ public:
     void Bind(GLuint slot = 0) const;
     void BindImage(GLuint unit, GLenum access, GLenum fmt, int level = 0) const;
     void GenerateMipmaps() const;
+    void SetFilter(GLenum minFilter, GLenum magFilter) const;
+    void SetWrap(GLenum wrapS, GLenum wrapT) const;
 
     GLuint GetID() const     { return id_; }
     int GetWidth() const     { return width_; }
