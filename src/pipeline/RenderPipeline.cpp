@@ -10,12 +10,18 @@ void RenderPipeline::Init(int w, int h, const std::string& hdrPath) {
     shadowPass_.Init(2048);
     gbufferPass_.Init(w, h);
     lightingPass_.Init(w, h, hdrPath);
+    bloomTechnique_.Init(w, h);
     postProcessPass_.Init();
 }
 
 void RenderPipeline::Resize(int w, int h) {
     gbufferPass_.Resize(w, h);
     lightingPass_.Resize(w, h);
+    bloomTechnique_.Resize(w, h);
+}
+
+void RenderPipeline::InvalidateHistory() {
+    // History-based techniques will reset their temporal resources here.
 }
 
 void RenderPipeline::UpdateUniformBuffers(const RenderSceneView& scene,
@@ -41,6 +47,8 @@ const PipelineOutputs& RenderPipeline::Execute(const RenderSceneView& scene,
     outputs_.gbuffer = gbufferPass_.Render(scene, frame);
     outputs_.lighting = lightingPass_.Render(outputs_.gbuffer, outputs_.shadow,
                                              scene, frame);
+    outputs_.bloom = bloomTechnique_.Execute(frame, outputs_,
+                                             frame.renderSettings.bloom);
     postProcessPass_.Render(outputs_, frame);
     return outputs_;
 }
