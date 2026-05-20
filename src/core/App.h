@@ -1,15 +1,13 @@
 #pragma once
 #include <memory>
-#include <string>
-#include <vector>
+#include "../app/ApplicationState.h"
+#include "../app/InputController.h"
 #include "../renderer/FrameContext.h"
 
 namespace HuanGL {
 
 class Window;
 class RenderPipeline;
-class Scene;
-class Camera;
 class ResourceManager;
 class ImGuiLayer;
 
@@ -27,27 +25,19 @@ private:
     void Shutdown();
     void Update(float dt);
     void Render(float dt);
-    void RegisterScene(std::unique_ptr<Scene> scene, std::string name);
-    void CycleScene();
-    void HandleHotkeys();
+    void RegisterScenes();
+    FrameContext BuildFrameContext(float dt) const;
     void BuildDebugPanel();
 
     std::unique_ptr<Window>          window_;
-    std::unique_ptr<Camera>          camera_;
     std::unique_ptr<RenderPipeline>  pipeline_;
     std::unique_ptr<ResourceManager> resourceManager_;
     std::unique_ptr<ImGuiLayer>      imguiLayer_;
 
-    // All registered scenes; index `activeSceneIdx_` is the live one.
-    std::vector<std::unique_ptr<Scene>> scenes_;
-    std::vector<std::string>            sceneNames_;
-    size_t                              activeSceneIdx_ = 0;
-
-    RenderSettings renderSettings_;
-    DebugSettings debugSettings_;
+    ApplicationState state_;
+    InputController inputController_;
 
     float lastTime_ = 0.0f;
-    bool  running_  = true;
 };
 
 } // namespace HuanGL
