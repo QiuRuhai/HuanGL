@@ -13,6 +13,7 @@ out/
 # Claude and Superpowers workspace
 .claude/
 .superpowers/
+.worktrees/
 
 # Generated Visual Studio project files
 *.sln
