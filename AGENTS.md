@@ -197,6 +197,7 @@ For phase deliverables, dependencies, and ordering rationale see
 - Docs overhaul design: `docs/superpowers/specs/2026-05-19-huangl-docs-overhaul-design.md`
 - Architecture reset design: `docs/superpowers/specs/2026-05-20-huangl-architecture-reset-design.md`
 - Rendering technique architecture design: `docs/superpowers/specs/2026-05-20-huangl-technique-architecture-design.md`
+- Bloom polish design: `docs/superpowers/specs/2026-05-20-huangl-bloom-polish-design.md`
 - Phase 1 plan: `docs/superpowers/plans/2026-05-13-huangl-phase1-foundation.md`
 - Repository cleanup plan: `docs/superpowers/plans/2026-05-13-huangl-repository-cleanup.md`
 - Phase 2 pipeline plan: `docs/superpowers/plans/2026-05-14-huangl-phase2-pipeline.md`
