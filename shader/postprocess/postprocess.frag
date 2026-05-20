@@ -6,9 +6,13 @@ layout(binding = 0) uniform sampler2D uHDRInput;
 layout(binding = 1) uniform sampler2D uAlbedoMetallic;
 layout(binding = 2) uniform sampler2D uNormalRoughness;
 layout(binding = 3) uniform sampler2D uDepth;
+layout(binding = 4) uniform sampler2D uBloomInput;
 
 uniform int uToneMapMode;  // 0=ACES, 1=Reinhard, 2=None
-uniform int uDebugMode;    // 0=Final, 1=Albedo, 2=Normal, 3=Roughness, 4=Metallic, 5=Depth, 6=Cascades
+uniform int uDebugMode;    // 0=Final, 1=Albedo, 2=Normal, 3=Roughness, 4=Metallic, 5=Depth, 6=Cascades, 7=Bloom
+uniform bool uBloomEnabled;
+uniform float uBloomIntensity;
+uniform float uExposure;
 
 uniform mat4 uView;
 uniform mat4 uInvViewProj;
@@ -44,6 +48,11 @@ vec3 WorldPosFromDepth(vec2 uv, float depth, mat4 invVP) {
 void main() {
     if (uDebugMode == 0) {
         vec3 hdr = texture(uHDRInput, vUV).rgb;
+        if (uBloomEnabled) {
+            hdr += texture(uBloomInput, vUV).rgb * uBloomIntensity;
+        }
+        hdr *= uExposure;
+
         vec3 color;
         if (uToneMapMode == 0)      color = ACESFilmic(hdr);
         else if (uToneMapMode == 1) color = Reinhard(hdr);
@@ -103,6 +112,11 @@ void main() {
         }
         vec3 base = texture(uAlbedoMetallic, vUV).rgb;
         FragColor = vec4(mix(base, cascadeColors[cascade], 0.5), 1.0);
+        return;
+    }
+    if (uDebugMode == 7) {
+        vec3 bloom = uBloomEnabled ? texture(uBloomInput, vUV).rgb : vec3(0.0);
+        FragColor = vec4(bloom, 1.0);
         return;
     }
 

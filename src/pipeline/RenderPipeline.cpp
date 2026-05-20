@@ -41,8 +41,7 @@ const PipelineOutputs& RenderPipeline::Execute(const RenderSceneView& scene,
     outputs_.gbuffer = gbufferPass_.Render(scene, frame);
     outputs_.lighting = lightingPass_.Render(outputs_.gbuffer, outputs_.shadow,
                                              scene, frame);
-    postProcessPass_.Render(outputs_.lighting, outputs_.gbuffer,
-                            outputs_.shadow, frame);
+    postProcessPass_.Render(outputs_, frame);
     return outputs_;
 }
 

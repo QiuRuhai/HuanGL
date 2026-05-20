@@ -11,9 +11,7 @@ class VertexArray;
 class PostProcessPass {
 public:
     void Init();
-    void Render(const LightingOutputs& lighting,
-                const GBufferOutputs& gbuffer,
-                const ShadowOutputs& shadow,
+    void Render(const PipelineOutputs& outputs,
                 const FrameContext& frame);
 
 private:

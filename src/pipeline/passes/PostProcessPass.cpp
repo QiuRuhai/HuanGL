@@ -12,17 +12,26 @@ void PostProcessPass::Init() {
     dummyVAO_ = std::make_unique<VertexArray>();
 }
 
-void PostProcessPass::Render(const LightingOutputs& lighting,
-                             const GBufferOutputs& gbuffer,
-                             const ShadowOutputs& shadow,
+void PostProcessPass::Render(const PipelineOutputs& outputs,
                              const FrameContext& frame) {
+    const LightingOutputs& lighting = outputs.lighting;
+    const GBufferOutputs& gbuffer = outputs.gbuffer;
+    const ShadowOutputs& shadow = outputs.shadow;
+    const BloomOutputs& bloom = outputs.bloom;
+
     Framebuffer::BindDefault();
+    Renderer::SetViewport(0, 0, frame.width, frame.height);
     Renderer::EnableDepthTest(false);
     Renderer::EnableCullFace(false);
 
     shader_->Use();
     shader_->SetInt("uToneMapMode", ToShaderToneMapMode(frame.renderSettings.toneMapMode));
     shader_->SetInt("uDebugMode", ToShaderDebugView(frame.debugSettings.view));
+    const bool bloomAvailable = frame.renderSettings.bloom.enabled &&
+                                bloom.bloom != nullptr;
+    shader_->SetBool("uBloomEnabled", bloomAvailable);
+    shader_->SetFloat("uBloomIntensity", frame.renderSettings.bloom.intensity);
+    shader_->SetFloat("uExposure", frame.renderSettings.exposure);
 
     // Camera data for debug views
     shader_->SetMat4("uView", frame.camera.view);
@@ -41,6 +50,9 @@ void PostProcessPass::Render(const LightingOutputs& lighting,
     gbuffer.albedoMetallic->Bind(1);
     gbuffer.normalRoughness->Bind(2);
     gbuffer.depth->Bind(3);
+    if (bloomAvailable) {
+        bloom.bloom->Bind(4);
+    }
 
     dummyVAO_->Bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
