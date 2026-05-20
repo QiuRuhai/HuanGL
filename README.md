@@ -6,7 +6,9 @@ The original LearnOpenGL state is preserved at git tag `archive/learnogl-v1`.
 
 ## Current Status
 
-Phases 1, 2, and 2.5 are complete. The renderer currently supports:
+Phases 1, 2, 2.5, and the minimum Phase 3 architecture reset are
+complete. Phase 4 is in progress with Bloom implemented. The renderer
+currently supports:
 
 - Deferred PBR shading with metallic-roughness workflow (Cook-Torrance).
 - Image-based lighting from a single HDR equirectangular environment (diffuse
@@ -14,13 +16,16 @@ Phases 1, 2, and 2.5 are complete. The renderer currently supports:
 - Cascaded shadow maps (four cascades, `sampler2DArrayShadow`, 3x3 PCF).
 - A post-processing pass with selectable tone mapping (ACES Filmic,
   Reinhard, linear) and sRGB-approximate gamma.
+- Multi-mip HDR Bloom with soft-knee bright extraction, filtered
+  downsampling, upsample combine, and pre-tone-map compositing.
 - glTF, OBJ, and FBX loading through Assimp, including PBR factor extraction,
   normal-map sampling with TBN reconstructed in the fragment shader, and
   packed metallic-roughness textures.
 - `.glb` embedded textures via Assimp `*N` indices.
 - Multi-scene registration with runtime cycling.
-- Seven runtime debug views: final composite, albedo, world-space normal,
-  roughness, metallic, linear depth, and shadow cascade overlay.
+- Eight runtime debug views: final composite, albedo, world-space normal,
+  roughness, metallic, linear depth, shadow cascade overlay, and Bloom
+  contribution.
 - Window resize propagated through the entire pipeline.
 
 For architecture, key design decisions, and the forward-looking roadmap (Phases 3 through 8), see [`docs/architecture.md`](docs/architecture.md).
@@ -29,12 +34,13 @@ For architecture, key design decisions, and the forward-looking roadmap (Phases 
 
 ```text
 src/
-  core/          App, Window, Input
+  app/           Runtime state, scene registry, input command mapping
+  core/          App lifecycle, Window, Input, Camera
   renderer/      OpenGL resource and state wrappers
-  pipeline/      Render pipeline code added by later phases
-  resource/      Resource management code added by later phases
-  scene/         Scene system code added by later phases
-  ui/            Debug UI code added by later phases
+  pipeline/      Render passes and concrete rendering techniques
+  resource/      Resource management and mesh loading
+  scene/         World, entities, and demo scene builders
+  ui/            ImGui lifecycle and debug panels
 
 external/
   glad/          Vendored GLAD2 loader
@@ -42,6 +48,7 @@ external/
   stb/           Vendored stb_image
 
 shader/
+  bloom/         Bloom extract/downsample/upsample shaders
   common/        Shared GLSL definitions
 
 docs/
@@ -131,6 +138,7 @@ Runtime controls:
 | `4` | Metallic |
 | `5` | Linear depth |
 | `6` | Shadow cascade overlay |
+| `7` | Bloom contribution |
 | `Esc` | Quit |
 
 ## Technical Direction
@@ -149,8 +157,9 @@ Runtime controls:
 | 1 | ✅ Complete | Foundation (GLAD2, RAII wrappers, App loop) |
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
-| 3 | Planned | Scene system and ImGui debug UI |
-| 4 | Planned | Bloom, TAA, improved tone mapping |
+| 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
+| 3.5 | ✅ Initial Complete | Concrete technique module boundary |
+| 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |

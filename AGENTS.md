@@ -132,13 +132,14 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/ui/ImGuiLayer.h/cpp` | Dear ImGui context and GLFW/OpenGL3 backend wrapper |
 | `src/ui/DebugUI.h/cpp` | HuanGL Debug panel that edits state/world data |
 
-### Phase 3.5: Rendering Technique Architecture — Initial
+### Phase 3.5: Rendering Technique Architecture — Initial Complete
 
 | File | Responsibility |
 |------|----------------|
-| `src/pipeline/techniques/BloomTechnique.h/cpp` | First concrete technique module, bright-pass plus separable blur Bloom |
-| `shader/bloom/bright_extract.frag` | Extracts bright HDR radiance for Bloom |
-| `shader/bloom/blur.frag` | Separable blur pass for Bloom |
+| `src/pipeline/techniques/BloomTechnique.h/cpp` | Multi-mip Bloom technique with soft-knee bright extract, downsample chain, and upsample combine |
+| `shader/bloom/bright_extract.frag` | Soft-knee bright HDR radiance extraction for Bloom |
+| `shader/bloom/downsample.frag` | Filtered downsample pass for the Bloom mip chain |
+| `shader/bloom/upsample.frag` | Upsample-and-combine pass for reconstructing broad Bloom |
 | `shader/postprocess/postprocess.frag` | Composites optional Bloom before tone mapping and exposes Bloom debug view |
 
 ## Current Directory Structure
@@ -178,7 +179,7 @@ Empty future directories may be absent from Git until their implementation start
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
-| 3.5 | In Progress | Concrete technique module boundary |
+| 3.5 | ✅ Initial Complete | Concrete technique module boundary |
 | 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
