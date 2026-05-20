@@ -18,9 +18,6 @@ public:
     ShadowOutputs Render(const RenderSceneView& scene, const FrameContext& frame);
     ShadowOutputs GetOutputs() const;
 
-    GLuint GetShadowMapArray() const { return shadowArrayID_; }
-    const std::array<CascadeData, 4>& GetCascades() const { return cascades_; }
-
 private:
     std::unique_ptr<Shader>      shader_;
     std::unique_ptr<Framebuffer> fbo_;

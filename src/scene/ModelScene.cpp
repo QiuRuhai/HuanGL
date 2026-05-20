@@ -100,7 +100,6 @@ void ModelScene::Init(ResourceManager& /*rm*/) {
     sun.color     = {1.0f, 0.95f, 0.85f};
     sun.intensity = 6.0f;
 
-    SyncPtrs();
 }
 
 } // namespace HuanGL

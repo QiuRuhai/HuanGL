@@ -23,9 +23,6 @@ public:
                                    const FrameContext& frame);
     const PipelineOutputs& GetOutputs() const { return outputs_; }
 
-    PostProcessPass& GetPostProcess() { return postProcessPass_; }
-    LightingPass& GetLighting() { return lightingPass_; }
-
 private:
     void UpdateUniformBuffers(const RenderSceneView& scene, const FrameContext& frame);
 

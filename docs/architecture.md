@@ -46,26 +46,30 @@ Runtime controls:
 
 ## Render Pipeline
 
-Each frame the `RenderPipeline` orchestrator runs four passes in fixed
-order. Pass inputs and outputs use the formats below:
+Each frame the active `World` is adapted into a read-only
+`RenderSceneView`, and per-frame camera/settings/time data are packaged
+into a `FrameContext`. `RenderPipeline` updates shared UBOs from those
+contracts, then runs four passes in fixed order. Pass inputs and outputs
+use the formats below:
 
 ```
-Scene ──┬─► ShadowPass     → sampler2DArrayShadow (2048² × 4 cascades, D32)
+World → RenderSceneView + FrameContext
         │
-        ├─► GBufferPass    → RT0 RGBA8   (albedo.rgb,  metallic.a)
+        ├─► ShadowPass     → ShadowOutputs
+        │                    sampler2DArrayShadow (2048² × 4 cascades, D32)
+        │
+        ├─► GBufferPass    → GBufferOutputs
+        │                    RT0 RGBA8   (albedo.rgb,  metallic.a)
         │                    RT1 RGBA16F (normal.rgb,  roughness.a)
         │                    Depth D24
         │
-        └─► LightingPass   ← reads GBuffer + shadow array + IBL cubemaps
-                             writes RGBA16F HDR target
-                                    │
-                                    ▼
-                             PostProcessPass
-                                    │
-                             tone map + gamma + debug overlay
-                                    │
-                                    ▼
-                                Backbuffer
+        └─► LightingPass   ← reads GBufferOutputs + ShadowOutputs + IBL
+             │               writes LightingOutputs (RGBA16F HDR target)
+             ▼
+        PostProcessPass    ← reads Lighting/GBuffer/Shadow outputs
+             │               tone map + gamma + debug overlay
+             ▼
+        Backbuffer
 ```
 
 ShadowPass and GBufferPass are independent and could be reordered; the
@@ -77,16 +81,21 @@ IBL textures (diffuse irradiance cubemap, prefiltered specular cubemap,
 BRDF LUT) are generated once in `LightingPass::Init` from an HDR
 equirectangular environment, and reused every frame.
 
+`PipelineOutputs` is the named handoff point for pass resources. The
+passes still own their textures and framebuffers; the output structs are
+lightweight handles for downstream passes and future debug tooling.
+
 ## Module Map
 
 | Subdirectory | Responsibility | Key types |
 |--------------|----------------|-----------|
 | `src/core/` | Window, input, app loop, camera | `App`, `Window`, `Input`, `Camera` |
+| `src/app/` | Runtime state, scene registry, input command mapping | `ApplicationState`, `SceneRegistry`, `InputController` |
 | `src/renderer/` | OpenGL RAII wrappers and shared schemas | `Shader`, `Buffer`, `Texture`, `Framebuffer`, `Material`, `Mesh` |
 | `src/pipeline/` | Render passes and per-frame orchestration | `RenderPipeline`, `ShadowPass`, `GBufferPass`, `LightingPass`, `PostProcessPass` |
 | `src/resource/` | Asset loading and caching | `ResourceManager`, `MeshLoader` |
-| `src/scene/` | Scene definitions | `Scene`, `TestScene`, `ModelScene` |
-| `src/ui/` | Reserved for ImGui (Phase 3) | — |
+| `src/scene/` | Lightweight world/entities and demo scene builders | `World`, `Entity`, `TestScene`, `ModelScene` |
+| `src/ui/` | ImGui lifecycle and debug panels | `ImGuiLayer`, `DebugUI` |
 
 File-level inventory lives in `AGENTS.md`; this table intentionally
 stops at the subdirectory level so it does not have to be touched on
@@ -121,6 +130,11 @@ rewrite, which is acceptable for a learning project.
 radiance to an RGBA16F target; PostProcessPass applies the tone map and
 gamma. Keeps the HDR signal available for future passes (Bloom, TAA).
 
+**UI edits state, passes read frame contracts.** ImGui controls mutate
+`ApplicationState` and the active `World`; render passes read
+`FrameContext` and `RenderSceneView`. This keeps debug tooling from
+depending on pass internals and makes future pass settings explicit.
+
 **Tangent-space normal mapping with fragment-side Gram-Schmidt.** The
 vertex shader passes raw (un-normalized, un-orthogonalized) tangent;
 the fragment shader normalizes the interpolated N, re-orthogonalizes T
@@ -143,7 +157,7 @@ prevent the app from starting with the remaining registered scenes.
 | 1 | ✅ Complete | Foundation (GLAD2, RAII wrappers, App loop) |
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
-| 3 | Planned | Scene system and ImGui debug UI |
+| 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 4 | Planned | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
@@ -158,26 +172,33 @@ the largest known risk. Plans for completed phases live under
 ### Phase 3 — Scene System and ImGui Debug UI
 
 **Goal.** Replace the keyboard-only debug controls with a real
-inspectable UI, and grow `ModelScene` into a small scene manager that
-exposes per-entity transforms and material parameters.
+inspectable UI, and introduce enough world/entity structure that scenes,
+transforms, lights, and render settings can be edited without coupling
+ImGui to render pass internals.
 
 **Deliverables.**
 - `src/ui/ImGuiLayer.h/cpp` wrapping Dear ImGui setup, frame begin/end,
   and the GLFW + OpenGL3 backends.
-- A debug panel exposing tone-map operator, debug mode, ambient
-  strength, sun direction/color/intensity, and camera FOV.
-- A scene inspector panel listing registered scenes and (eventually)
-  per-mesh transforms.
-- Optional ImGuizmo integration for manipulating selected entities.
+- `src/ui/DebugUI.h/cpp` exposing tone-map operator, debug mode, ambient
+  strength, sun direction/color/intensity, camera FOV, frame stats, and
+  basic entity transform controls.
+- `src/app/ApplicationState.h`, `SceneRegistry`, and `InputController`
+  so `App` stays focused on lifecycle and frame scheduling.
+- `src/scene/World.h/cpp` with lightweight `Entity`, `Transform`, and
+  `MeshRenderer` data.
+- `FrameContext`, `RenderSceneView`, and `PipelineOutputs` contracts so
+  the fixed render pipeline has explicit inputs and resource handoffs.
+- Optional future ImGuizmo integration for manipulating selected
+  entities.
 
 **Depends on.** Phase 2.5 (PostProcessPass exposes the runtime knobs the
 UI will drive).
 
 **Independent of.** Phase 4.
 
-**Risk.** Integrating Dear ImGui through vcpkg without disturbing the
-existing GLFW setup. Mitigation: add the imgui port to vcpkg.json and
-include only the GLFW + OpenGL3 backend headers.
+**Risk.** Letting the debug UI become an editor framework. Mitigation:
+keep `World` simple, avoid a full ECS, and defer serialization, undo/redo,
+asset browsing, and ImGuizmo until the rendering roadmap needs them.
 
 ### Phase 4 — Bloom, TAA, Improved Tone Mapping
 

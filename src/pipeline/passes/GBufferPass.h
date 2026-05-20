@@ -17,10 +17,6 @@ public:
     GBufferOutputs Render(const RenderSceneView& scene, const FrameContext& frame);
     GBufferOutputs GetOutputs() const;
 
-    std::shared_ptr<Texture> GetAlbedoMetallic()  const;
-    std::shared_ptr<Texture> GetNormalRoughness() const;
-    std::shared_ptr<Texture> GetDepth()           const;
-
 private:
     std::unique_ptr<Framebuffer> fbo_;
     std::unique_ptr<Shader>      shader_;

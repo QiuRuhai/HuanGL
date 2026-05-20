@@ -82,8 +82,4 @@ GBufferOutputs GBufferPass::GetOutputs() const {
     return outputs;
 }
 
-std::shared_ptr<Texture> GBufferPass::GetAlbedoMetallic()  const { return fbo_->GetColor(0); }
-std::shared_ptr<Texture> GBufferPass::GetNormalRoughness() const { return fbo_->GetColor(1); }
-std::shared_ptr<Texture> GBufferPass::GetDepth()           const { return fbo_->GetDepth(); }
-
 } // namespace HuanGL

@@ -106,7 +106,6 @@ void TestScene::Init(ResourceManager& /*rm*/) {
     sun.color     = {1.0f, 0.95f, 0.85f};
     sun.intensity = 8.0f;
 
-    SyncPtrs();
 }
 
 } // namespace HuanGL

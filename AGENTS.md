@@ -65,6 +65,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
 - `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
 - `App` registers scenes with soft failure: if a model file is missing or fails to load, the app logs and skips, continuing with the remaining registered scenes.
+- Debug UI edits `ApplicationState` and `World`; render passes read `FrameContext` and `RenderSceneView`. Do not let ImGui mutate pass internals directly.
 - `packed`, `near`, and `far` are reserved or potentially reserved names in GLSL across drivers. Avoid them as GLSL identifiers.
 
 ## Current Progress
@@ -115,10 +116,26 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/core/Input.h/cpp` | Adds `IsKeyJustPressed` via GLFW key callback |
 | `src/core/App.h/cpp` | Multi-scene registration with `N`-key cycling, debug-key handling, resize propagation |
 
+### Phase 3: Architecture Reset and Debug UI — Minimum Complete
+
+| File | Responsibility |
+|------|----------------|
+| `src/app/ApplicationState.h` | Runtime state container for scene registry, camera, render settings, debug settings, frame stats |
+| `src/app/SceneRegistry.h/cpp` | Demo scene registration, active scene selection, soft-failure loading |
+| `src/app/InputController.h/cpp` | Keyboard command mapping into `ApplicationState` |
+| `src/scene/World.h/cpp` | Lightweight entity/world model used by renderer and DebugUI |
+| `src/renderer/FrameContext.h` | Per-frame viewport, time, camera data, render settings, debug settings |
+| `src/renderer/RenderSceneView.h` | Read-only renderable view consumed by passes |
+| `src/pipeline/CascadeData.h` | Shared CSM cascade metadata |
+| `src/pipeline/PipelineOutputs.h` | Explicit pass output structs for future passes |
+| `src/ui/ImGuiLayer.h/cpp` | Dear ImGui context and GLFW/OpenGL3 backend wrapper |
+| `src/ui/DebugUI.h/cpp` | HuanGL Debug panel that edits state/world data |
+
 ## Current Directory Structure
 
 ```text
 src/
+  app/
   core/
   renderer/
   pipeline/
@@ -148,7 +165,7 @@ Empty future directories may be absent from Git until their implementation start
 | 1 | ✅ Complete | Foundation (GLAD2, RAII wrappers, App loop) |
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
-| 3 | Planned | Scene system and ImGui debug UI |
+| 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 4 | Planned | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
@@ -165,9 +182,11 @@ For phase deliverables, dependencies, and ordering rationale see
 - Phase 2 pipeline design: `docs/superpowers/specs/2026-05-14-huangl-phase2-pipeline-design.md`
 - Phase 2.5 polish design: `docs/superpowers/specs/2026-05-16-huangl-phase2.5-polish-design.md`
 - Docs overhaul design: `docs/superpowers/specs/2026-05-19-huangl-docs-overhaul-design.md`
+- Architecture reset design: `docs/superpowers/specs/2026-05-20-huangl-architecture-reset-design.md`
 - Phase 1 plan: `docs/superpowers/plans/2026-05-13-huangl-phase1-foundation.md`
 - Repository cleanup plan: `docs/superpowers/plans/2026-05-13-huangl-repository-cleanup.md`
 - Phase 2 pipeline plan: `docs/superpowers/plans/2026-05-14-huangl-phase2-pipeline.md`
 - Phase 2.5 polish plan: `docs/superpowers/plans/2026-05-16-huangl-phase2.5-polish.md`
 - Docs overhaul plan: `docs/superpowers/plans/2026-05-19-huangl-docs-overhaul.md`
+- Architecture reset plan: `docs/superpowers/plans/2026-05-20-huangl-architecture-reset.md`
 - Architecture and roadmap: `docs/architecture.md`

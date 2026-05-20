@@ -32,10 +32,6 @@ void LightingPass::Resize(int w, int h) {
     CreateHDRFBO(w, h);
 }
 
-std::shared_ptr<Texture> LightingPass::GetHDROutput() const {
-    return hdrFBO_->GetColor(0);
-}
-
 LightingOutputs LightingPass::GetOutputs() const {
     LightingOutputs outputs;
     outputs.hdrColor = hdrFBO_->GetColor(0);

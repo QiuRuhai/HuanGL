@@ -24,8 +24,6 @@ public:
                            const FrameContext& frame);
     LightingOutputs GetOutputs() const;
 
-    std::shared_ptr<Texture> GetHDROutput() const;
-
 private:
     void GenerateIBL(const std::string& hdrPath);
     void CreateHDRFBO(int w, int h);
