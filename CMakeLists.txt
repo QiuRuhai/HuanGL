@@ -58,6 +58,9 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE assimp)
 endif()
 
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
+
 if(APPLE)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         BUILD_RPATH "/opt/homebrew/lib"

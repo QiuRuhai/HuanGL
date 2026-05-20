@@ -50,6 +50,8 @@ public:
     }
 
     glm::vec3 GetPos() const { return pos_; }
+    float GetFov() const       { return glm::degrees(fov_); }
+    void  SetFov(float deg)    { fov_ = glm::radians(deg); }
 
 private:
     glm::vec3 pos_ = {0, 3, 10}, front_ = {0, 0, -1}, worldUp_ = {0, 1, 0};

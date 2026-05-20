@@ -20,6 +20,7 @@ public:
 
     const std::vector<Material>&    GetMaterials() const { return materials_; }
     const DirectionalLight&         GetSunLight()  const { return sunLight_; }
+    DirectionalLight&               GetMutableSunLight() { return sunLight_; }
     const glm::vec3&                GetAmbient()   const { return ambient_; }
 
 protected:

@@ -1,0 +1,12 @@
+{
+  "name": "huangl",
+  "version-string": "0.0.0",
+  "dependencies": [
+    "glfw3",
+    "assimp",
+    {
+      "name": "imgui",
+      "features": ["glfw-binding", "opengl3-binding"]
+    }
+  ]
+}

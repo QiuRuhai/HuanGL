@@ -197,7 +197,7 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     pbrShader_->SetMat4("uView", camera.view);
     pbrShader_->SetMat4("uInvViewProj", glm::inverse(camera.viewProj));
     pbrShader_->SetVec3("uCamPos", camera.camPos);
-    pbrShader_->SetFloat("uAmbientStrength", 1.0f);
+    pbrShader_->SetFloat("uAmbientStrength", ambientStrength_);
 
     dummyVAO_->Bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);

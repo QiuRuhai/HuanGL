@@ -20,6 +20,7 @@ public:
     void Execute(const Scene& scene, const CameraData& camera);
 
     PostProcessPass& GetPostProcess() { return postProcessPass_; }
+    LightingPass& GetLighting() { return lightingPass_; }
 
 private:
     ShadowPass      shadowPass_;

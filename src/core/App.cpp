@@ -13,6 +13,8 @@
 #include <cstdio>
 #include <exception>
 #include <filesystem>
+#include "../ui/ImGuiLayer.h"
+#include <imgui.h>
 
 namespace HuanGL {
 
@@ -37,6 +39,8 @@ void App::CycleScene() {
 void App::Init() {
     window_ = std::make_unique<Window>(1280, 720, "HuanGL");
     Input::Init(window_->GetHandle());
+    imguiLayer_ = std::make_unique<ImGuiLayer>();
+    imguiLayer_->Init(window_->GetHandle());
     Renderer::Init();
     Renderer::SetViewport(0, 0, window_->GetWidth(), window_->GetHeight());
 
@@ -105,7 +109,34 @@ void App::Init() {
 }
 
 void App::Shutdown() {
+    if (imguiLayer_) imguiLayer_->Shutdown();
     ResourceManager::Shutdown();
+}
+
+void App::HandleHotkeys() {
+    if (Input::IsKeyPressed(GLFW_KEY_ESCAPE))
+        running_ = false;
+
+    if (Input::IsKeyJustPressed(GLFW_KEY_N))
+        CycleScene();
+
+    auto& pp = pipeline_->GetPostProcess();
+    if (Input::IsKeyJustPressed(GLFW_KEY_T))
+        pp.CycleToneMap();
+    if (Input::IsKeyJustPressed(GLFW_KEY_0) || Input::IsKeyJustPressed(GLFW_KEY_KP_0))
+        pp.SetDebugMode(0);
+    if (Input::IsKeyJustPressed(GLFW_KEY_1) || Input::IsKeyJustPressed(GLFW_KEY_KP_1))
+        pp.SetDebugMode(1);
+    if (Input::IsKeyJustPressed(GLFW_KEY_2) || Input::IsKeyJustPressed(GLFW_KEY_KP_2))
+        pp.SetDebugMode(2);
+    if (Input::IsKeyJustPressed(GLFW_KEY_3) || Input::IsKeyJustPressed(GLFW_KEY_KP_3))
+        pp.SetDebugMode(3);
+    if (Input::IsKeyJustPressed(GLFW_KEY_4) || Input::IsKeyJustPressed(GLFW_KEY_KP_4))
+        pp.SetDebugMode(4);
+    if (Input::IsKeyJustPressed(GLFW_KEY_5) || Input::IsKeyJustPressed(GLFW_KEY_KP_5))
+        pp.SetDebugMode(5);
+    if (Input::IsKeyJustPressed(GLFW_KEY_6) || Input::IsKeyJustPressed(GLFW_KEY_KP_6))
+        pp.SetDebugMode(6);
 }
 
 void App::Run() {
@@ -116,37 +147,74 @@ void App::Run() {
 
         Input::Update();
         window_->PollEvents();
-
-        if (Input::IsKeyPressed(GLFW_KEY_ESCAPE))
-            running_ = false;
-
-        // Scene switching
-        if (Input::IsKeyJustPressed(GLFW_KEY_N))
-            CycleScene();
-
-        // Debug visualization toggles
-        auto& pp = pipeline_->GetPostProcess();
-        if (Input::IsKeyJustPressed(GLFW_KEY_T))
-            pp.CycleToneMap();
-        if (Input::IsKeyJustPressed(GLFW_KEY_0) || Input::IsKeyJustPressed(GLFW_KEY_KP_0))
-            pp.SetDebugMode(0);
-        if (Input::IsKeyJustPressed(GLFW_KEY_1) || Input::IsKeyJustPressed(GLFW_KEY_KP_1))
-            pp.SetDebugMode(1);
-        if (Input::IsKeyJustPressed(GLFW_KEY_2) || Input::IsKeyJustPressed(GLFW_KEY_KP_2))
-            pp.SetDebugMode(2);
-        if (Input::IsKeyJustPressed(GLFW_KEY_3) || Input::IsKeyJustPressed(GLFW_KEY_KP_3))
-            pp.SetDebugMode(3);
-        if (Input::IsKeyJustPressed(GLFW_KEY_4) || Input::IsKeyJustPressed(GLFW_KEY_KP_4))
-            pp.SetDebugMode(4);
-        if (Input::IsKeyJustPressed(GLFW_KEY_5) || Input::IsKeyJustPressed(GLFW_KEY_KP_5))
-            pp.SetDebugMode(5);
-        if (Input::IsKeyJustPressed(GLFW_KEY_6) || Input::IsKeyJustPressed(GLFW_KEY_KP_6))
-            pp.SetDebugMode(6);
+        HandleHotkeys();
 
         Update(dt);
         Render();
+
+        imguiLayer_->BeginFrame();
+        BuildDebugPanel();
+        imguiLayer_->EndFrame();
+
         window_->SwapBuffers();
     }
+}
+
+void App::BuildDebugPanel() {
+    ImGui::Begin("HuanGL Debug");
+
+    if (ImGui::CollapsingHeader("Render")) {
+        auto& pp = pipeline_->GetPostProcess();
+
+        static const char* toneModes[] = { "ACES", "Reinhard", "None" };
+        int toneMode = pp.GetToneMapMode();
+        if (ImGui::Combo("Tone Map", &toneMode, toneModes, 3))
+            pp.SetToneMapMode(toneMode);
+
+        static const char* debugModes[] = {
+            "Final", "Albedo", "Normal", "Roughness", "Metallic", "Depth", "Cascades"
+        };
+        int debugMode = pp.GetDebugMode();
+        if (ImGui::Combo("Debug Mode", &debugMode, debugModes, 7))
+            pp.SetDebugMode(debugMode);
+    }
+
+    if (ImGui::CollapsingHeader("Lighting")) {
+        if (!scenes_.empty()) {
+            auto& sun = scenes_[activeSceneIdx_]->GetMutableSunLight();
+            ImGui::DragFloat3("Direction", &sun.direction.x, 0.01f, -1.f, 1.f);
+            if (glm::length(sun.direction) > 0.0f)
+                sun.direction = glm::normalize(sun.direction);
+            ImGui::ColorEdit3("Color", &sun.color.r);
+            ImGui::DragFloat("Intensity", &sun.intensity, 0.05f, 0.f, 20.f);
+
+            float ambient = pipeline_->GetLighting().GetAmbientStrength();
+            if (ImGui::DragFloat("Ambient Strength", &ambient, 0.01f, 0.f, 2.f))
+                pipeline_->GetLighting().SetAmbientStrength(ambient);
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Camera")) {
+        float fov = camera_->GetFov();
+        if (ImGui::SliderFloat("FOV", &fov, 30.f, 120.f))
+            camera_->SetFov(fov);
+    }
+
+    if (ImGui::CollapsingHeader("Scene")) {
+        if (!scenes_.empty()) {
+            ImGui::Text("Active: %s", sceneNames_[activeSceneIdx_].c_str());
+            if (ImGui::Button("Next"))
+                CycleScene();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Stats")) {
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui::Text("FPS: %.1f", 1.0f / io.DeltaTime);
+        ImGui::Text("Frame: %.2f ms", io.DeltaTime * 1000.0f);
+    }
+
+    ImGui::End();
 }
 
 void App::Update(float dt) {
