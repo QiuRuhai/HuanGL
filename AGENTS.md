@@ -61,6 +61,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - Reconstruct world position from depth and inverse view-proj in the lighting pass; do not write world position to a GBuffer attachment.
 - Use `sampler2DArrayShadow` for CSM and let the hardware perform the depth comparison; cascade selection uses view-space Z.
 - Tone mapping lives in `PostProcessPass`, not in the lighting shader. `LightingPass` writes raw HDR radiance to an RGBA16F target so future passes (Bloom, TAA) can read it.
+- Optional rendering algorithms live as concrete technique modules under `src/pipeline/techniques/`; do not add a full render graph or RHI.
 - Re-orthogonalize the TBN basis in the fragment shader, not the vertex shader. Interpolation destroys vertex-side orthogonality.
 - Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
 - `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
@@ -131,6 +132,15 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/ui/ImGuiLayer.h/cpp` | Dear ImGui context and GLFW/OpenGL3 backend wrapper |
 | `src/ui/DebugUI.h/cpp` | HuanGL Debug panel that edits state/world data |
 
+### Phase 3.5: Rendering Technique Architecture — Initial
+
+| File | Responsibility |
+|------|----------------|
+| `src/pipeline/techniques/BloomTechnique.h/cpp` | First concrete technique module, bright-pass plus separable blur Bloom |
+| `shader/bloom/bright_extract.frag` | Extracts bright HDR radiance for Bloom |
+| `shader/bloom/blur.frag` | Separable blur pass for Bloom |
+| `shader/postprocess/postprocess.frag` | Composites optional Bloom before tone mapping and exposes Bloom debug view |
+
 ## Current Directory Structure
 
 ```text
@@ -139,6 +149,7 @@ src/
   core/
   renderer/
   pipeline/
+    techniques/
   resource/
   scene/
   ui/
@@ -149,6 +160,7 @@ external/
   stb/
 
 shader/
+  bloom/
   common/
 
 docs/
@@ -166,7 +178,8 @@ Empty future directories may be absent from Git until their implementation start
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
-| 4 | Planned | Bloom, TAA, improved tone mapping |
+| 3.5 | In Progress | Concrete technique module boundary |
+| 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |

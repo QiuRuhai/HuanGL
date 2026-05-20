@@ -37,15 +37,28 @@ void DebugUI::Draw(ApplicationState& state) {
         }
 
         static const char* debugModes[] = {
-            "Final", "Albedo", "Normal", "Roughness", "Metallic", "Depth", "Cascades"
+            "Final", "Albedo", "Normal", "Roughness",
+            "Metallic", "Depth", "Cascades", "Bloom"
         };
         int debugMode = DebugViewIndex(state.debugSettings.view);
-        if (ImGui::Combo("Debug Mode", &debugMode, debugModes, 7)) {
+        if (ImGui::Combo("Debug Mode", &debugMode, debugModes, 8)) {
             state.debugSettings.view = DebugViewFromIndex(debugMode);
         }
 
         ImGui::DragFloat("Ambient Strength", &state.renderSettings.ambientStrength,
                          0.01f, 0.0f, 2.0f);
+    }
+
+    if (ImGui::CollapsingHeader("Techniques")) {
+        ImGui::Checkbox("Bloom", &state.renderSettings.bloom.enabled);
+        ImGui::DragFloat("Bloom Threshold", &state.renderSettings.bloom.threshold,
+                         0.05f, 0.0f, 20.0f);
+        ImGui::DragFloat("Bloom Intensity", &state.renderSettings.bloom.intensity,
+                         0.01f, 0.0f, 5.0f);
+        ImGui::SliderInt("Bloom Radius", &state.renderSettings.bloom.radius,
+                         1, 16);
+        ImGui::DragFloat("Exposure", &state.renderSettings.exposure,
+                         0.01f, 0.0f, 10.0f);
     }
 
     if (ImGui::CollapsingHeader("Lighting")) {

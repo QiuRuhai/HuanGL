@@ -66,8 +66,11 @@ World → RenderSceneView + FrameContext
         └─► LightingPass   ← reads GBufferOutputs + ShadowOutputs + IBL
              │               writes LightingOutputs (RGBA16F HDR target)
              ▼
-        PostProcessPass    ← reads Lighting/GBuffer/Shadow outputs
-             │               tone map + gamma + debug overlay
+        BloomTechnique     → BloomOutputs
+             │               half-resolution blurred bright buffer
+             ▼
+        PostProcessPass    ← reads Lighting/GBuffer/Shadow/Bloom outputs
+             │               composite + tone map + gamma + debug overlay
              ▼
         Backbuffer
 ```
@@ -92,7 +95,7 @@ lightweight handles for downstream passes and future debug tooling.
 | `src/core/` | Window, input, app loop, camera | `App`, `Window`, `Input`, `Camera` |
 | `src/app/` | Runtime state, scene registry, input command mapping | `ApplicationState`, `SceneRegistry`, `InputController` |
 | `src/renderer/` | OpenGL RAII wrappers and shared schemas | `Shader`, `Buffer`, `Texture`, `Framebuffer`, `Material`, `Mesh` |
-| `src/pipeline/` | Render passes and per-frame orchestration | `RenderPipeline`, `ShadowPass`, `GBufferPass`, `LightingPass`, `PostProcessPass` |
+| `src/pipeline/` | Render passes, concrete techniques, and per-frame orchestration | `RenderPipeline`, `ShadowPass`, `GBufferPass`, `LightingPass`, `PostProcessPass`, `BloomTechnique` |
 | `src/resource/` | Asset loading and caching | `ResourceManager`, `MeshLoader` |
 | `src/scene/` | Lightweight world/entities and demo scene builders | `World`, `Entity`, `TestScene`, `ModelScene` |
 | `src/ui/` | ImGui lifecycle and debug panels | `ImGuiLayer`, `DebugUI` |
@@ -130,6 +133,12 @@ rewrite, which is acceptable for a learning project.
 radiance to an RGBA16F target; PostProcessPass applies the tone map and
 gamma. Keeps the HDR signal available for future passes (Bloom, TAA).
 
+**Concrete technique modules.** Optional algorithms such as Bloom, TAA,
+RSM, SSGI, VXGI, and DDGI live under `src/pipeline/techniques/`.
+They own their resources and expose typed output structs. `RenderPipeline`
+keeps the frame order explicit and does not become the owner of every
+algorithm's internal framebuffers.
+
 **UI edits state, passes read frame contracts.** ImGui controls mutate
 `ApplicationState` and the active `World`; render passes read
 `FrameContext` and `RenderSceneView`. This keeps debug tooling from
@@ -158,7 +167,8 @@ prevent the app from starting with the remaining registered scenes.
 | 2 | ✅ Complete | Deferred render pipeline (GBuffer, CSM, PBR+IBL) |
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
-| 4 | Planned | Bloom, TAA, improved tone mapping |
+| 3.5 | In Progress | Concrete technique module boundary |
+| 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |

@@ -39,6 +39,9 @@ void InputController::Update(ApplicationState& state) {
     if (Input::IsKeyJustPressed(GLFW_KEY_6) || Input::IsKeyJustPressed(GLFW_KEY_KP_6)) {
         state.debugSettings.view = DebugView::Cascades;
     }
+    if (Input::IsKeyJustPressed(GLFW_KEY_7) || Input::IsKeyJustPressed(GLFW_KEY_KP_7)) {
+        state.debugSettings.view = DebugView::Bloom;
+    }
 }
 
 } // namespace HuanGL
