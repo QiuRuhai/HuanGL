@@ -205,4 +205,5 @@ For phase deliverables, dependencies, and ordering rationale see
 - Docs overhaul plan: `docs/superpowers/plans/2026-05-19-huangl-docs-overhaul.md`
 - Architecture reset plan: `docs/superpowers/plans/2026-05-20-huangl-architecture-reset.md`
 - Rendering technique architecture plan: `docs/superpowers/plans/2026-05-20-huangl-technique-architecture.md`
+- Bloom polish plan: `docs/superpowers/plans/2026-05-20-huangl-bloom-polish.md`
 - Architecture and roadmap: `docs/architecture.md`
