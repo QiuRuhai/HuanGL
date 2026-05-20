@@ -50,10 +50,6 @@ void App::Init() {
             pipeline_->Resize(w, h);
     });
 
-    cameraUBO_ = std::make_unique<CameraUBO>();
-    lightsUBO_ = std::make_unique<LightsUBO>();
-    timeUBO_   = std::make_unique<TimeUBO>();
-
     camera_ = std::make_unique<Camera>(60.f, 0.1f, 100.f);
     Input::SetCursorCaptured(true);
 
@@ -120,23 +116,22 @@ void App::HandleHotkeys() {
     if (Input::IsKeyJustPressed(GLFW_KEY_N))
         CycleScene();
 
-    auto& pp = pipeline_->GetPostProcess();
     if (Input::IsKeyJustPressed(GLFW_KEY_T))
-        pp.CycleToneMap();
+        renderSettings_.CycleToneMap();
     if (Input::IsKeyJustPressed(GLFW_KEY_0) || Input::IsKeyJustPressed(GLFW_KEY_KP_0))
-        pp.SetDebugMode(0);
+        debugSettings_.view = DebugView::Final;
     if (Input::IsKeyJustPressed(GLFW_KEY_1) || Input::IsKeyJustPressed(GLFW_KEY_KP_1))
-        pp.SetDebugMode(1);
+        debugSettings_.view = DebugView::Albedo;
     if (Input::IsKeyJustPressed(GLFW_KEY_2) || Input::IsKeyJustPressed(GLFW_KEY_KP_2))
-        pp.SetDebugMode(2);
+        debugSettings_.view = DebugView::Normal;
     if (Input::IsKeyJustPressed(GLFW_KEY_3) || Input::IsKeyJustPressed(GLFW_KEY_KP_3))
-        pp.SetDebugMode(3);
+        debugSettings_.view = DebugView::Roughness;
     if (Input::IsKeyJustPressed(GLFW_KEY_4) || Input::IsKeyJustPressed(GLFW_KEY_KP_4))
-        pp.SetDebugMode(4);
+        debugSettings_.view = DebugView::Metallic;
     if (Input::IsKeyJustPressed(GLFW_KEY_5) || Input::IsKeyJustPressed(GLFW_KEY_KP_5))
-        pp.SetDebugMode(5);
+        debugSettings_.view = DebugView::Depth;
     if (Input::IsKeyJustPressed(GLFW_KEY_6) || Input::IsKeyJustPressed(GLFW_KEY_KP_6))
-        pp.SetDebugMode(6);
+        debugSettings_.view = DebugView::Cascades;
 }
 
 void App::Run() {
@@ -150,7 +145,7 @@ void App::Run() {
         HandleHotkeys();
 
         Update(dt);
-        Render();
+        Render(dt);
 
         imguiLayer_->BeginFrame();
         BuildDebugPanel();
@@ -164,19 +159,20 @@ void App::BuildDebugPanel() {
     ImGui::Begin("HuanGL Debug");
 
     if (ImGui::CollapsingHeader("Render")) {
-        auto& pp = pipeline_->GetPostProcess();
-
         static const char* toneModes[] = { "ACES", "Reinhard", "None" };
-        int toneMode = pp.GetToneMapMode();
+        int toneMode = ToShaderToneMapMode(renderSettings_.toneMapMode);
         if (ImGui::Combo("Tone Map", &toneMode, toneModes, 3))
-            pp.SetToneMapMode(toneMode);
+            renderSettings_.toneMapMode = static_cast<ToneMapMode>(toneMode);
 
         static const char* debugModes[] = {
             "Final", "Albedo", "Normal", "Roughness", "Metallic", "Depth", "Cascades"
         };
-        int debugMode = pp.GetDebugMode();
+        int debugMode = ToShaderDebugView(debugSettings_.view);
         if (ImGui::Combo("Debug Mode", &debugMode, debugModes, 7))
-            pp.SetDebugMode(debugMode);
+            debugSettings_.view = static_cast<DebugView>(debugMode);
+
+        ImGui::DragFloat("Ambient Strength", &renderSettings_.ambientStrength,
+                         0.01f, 0.0f, 2.0f);
     }
 
     if (ImGui::CollapsingHeader("Lighting")) {
@@ -188,9 +184,6 @@ void App::BuildDebugPanel() {
             ImGui::ColorEdit3("Color", &sun.color.r);
             ImGui::DragFloat("Intensity", &sun.intensity, 0.05f, 0.f, 20.f);
 
-            float ambient = pipeline_->GetLighting().GetAmbientStrength();
-            if (ImGui::DragFloat("Ambient Strength", &ambient, 0.01f, 0.f, 2.f))
-                pipeline_->GetLighting().SetAmbientStrength(ambient);
         }
     }
 
@@ -222,35 +215,31 @@ void App::Update(float dt) {
     if (!scenes_.empty())
         scenes_[activeSceneIdx_]->Update(dt);
 
-    TimeData timeData;
-    timeData.time      = static_cast<float>(glfwGetTime());
-    timeData.deltaTime = dt;
-    timeUBO_->Update(timeData);
 }
 
-void App::Render() {
+void App::Render(float dt) {
     int w = window_->GetWidth();
     int h = window_->GetHeight();
     if (w <= 0 || h <= 0) return; // minimized
     if (scenes_.empty()) return;
     float aspect = static_cast<float>(w) / static_cast<float>(h);
 
-    CameraData camData = camera_->GetData(aspect);
-    cameraUBO_->Update(camData);
-
     Scene& activeScene = *scenes_[activeSceneIdx_];
+    RenderSceneView sceneView = activeScene.BuildRenderSceneView();
 
-    LightsData lightData;
-    auto& sun = activeScene.GetSunLight();
-    lightData.dirLightDir       = sun.direction;
-    lightData.dirLightColor     = sun.color;
-    lightData.dirLightIntensity = sun.intensity;
-    lightsUBO_->Update(lightData);
+    FrameContext frame;
+    frame.width = w;
+    frame.height = h;
+    frame.time = static_cast<float>(glfwGetTime());
+    frame.deltaTime = dt;
+    frame.camera = camera_->GetData(aspect);
+    frame.renderSettings = renderSettings_;
+    frame.debugSettings = debugSettings_;
 
     Renderer::SetClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     Renderer::Clear();
 
-    pipeline_->Execute(activeScene, camData);
+    pipeline_->Execute(sceneView, frame);
 }
 
 } // namespace HuanGL

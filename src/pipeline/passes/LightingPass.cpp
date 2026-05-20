@@ -1,11 +1,8 @@
 #include "LightingPass.h"
-#include "GBufferPass.h"
-#include "ShadowPass.h"
 #include "../../renderer/Shader.h"
 #include "../../renderer/Framebuffer.h"
 #include "../../renderer/Buffer.h"
 #include "../../renderer/Renderer.h"
-#include "../../scene/Scene.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace HuanGL {
@@ -37,6 +34,12 @@ void LightingPass::Resize(int w, int h) {
 
 std::shared_ptr<Texture> LightingPass::GetHDROutput() const {
     return hdrFBO_->GetColor(0);
+}
+
+LightingOutputs LightingPass::GetOutputs() const {
+    LightingOutputs outputs;
+    outputs.hdrColor = hdrFBO_->GetColor(0);
+    return outputs;
 }
 
 void LightingPass::Init(int width, int height, const std::string& hdrPath) {
@@ -162,8 +165,10 @@ void LightingPass::GenerateIBL(const std::string& hdrPath) {
     Renderer::EnableDepthTest(true);
 }
 
-void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
-                           const Scene& scene, const CameraData& camera) {
+LightingOutputs LightingPass::Render(const GBufferOutputs& gbuffer,
+                                      const ShadowOutputs& shadow,
+                                      const RenderSceneView& scene,
+                                      const FrameContext& frame) {
     hdrFBO_->Bind();
     Renderer::SetViewport(0, 0, width_, height_);
     Renderer::Clear(true, true, false);
@@ -173,18 +178,18 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     pbrShader_->Use();
 
     // GBuffer inputs
-    gbuffer.GetAlbedoMetallic()->Bind(0);
-    gbuffer.GetNormalRoughness()->Bind(1);
-    gbuffer.GetDepth()->Bind(2);
+    gbuffer.albedoMetallic->Bind(0);
+    gbuffer.normalRoughness->Bind(1);
+    gbuffer.depth->Bind(2);
 
     // Shadow
-    glBindTextureUnit(3, shadow.GetShadowMapArray());
-    auto& cascades = shadow.GetCascades();
+    glBindTextureUnit(3, shadow.shadowArray);
+    auto& cascades = shadow.cascades;
     for (int c = 0; c < 4; ++c) {
         pbrShader_->SetMat4("uCascadeViewProj[" + std::to_string(c) + "]", cascades[c].viewProj);
         pbrShader_->SetFloat("uCascadeFar[" + std::to_string(c) + "]", cascades[c].farPlane);
     }
-    auto& light = scene.GetSunLight();
+    auto& light = scene.sunLight;
     pbrShader_->SetVec3("uLightDir", light.direction);
     pbrShader_->SetVec3("uLightColor", light.color * light.intensity);
 
@@ -194,10 +199,10 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     brdfLUT_->Bind(6);
 
     // Camera
-    pbrShader_->SetMat4("uView", camera.view);
-    pbrShader_->SetMat4("uInvViewProj", glm::inverse(camera.viewProj));
-    pbrShader_->SetVec3("uCamPos", camera.camPos);
-    pbrShader_->SetFloat("uAmbientStrength", ambientStrength_);
+    pbrShader_->SetMat4("uView", frame.camera.view);
+    pbrShader_->SetMat4("uInvViewProj", glm::inverse(frame.camera.viewProj));
+    pbrShader_->SetVec3("uCamPos", frame.camera.camPos);
+    pbrShader_->SetFloat("uAmbientStrength", frame.renderSettings.ambientStrength);
 
     dummyVAO_->Bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -206,6 +211,7 @@ void LightingPass::Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
     Framebuffer::BindDefault();
     Renderer::EnableCullFace(true);
     Renderer::EnableDepthTest(true);
+    return GetOutputs();
 }
 
 } // namespace HuanGL

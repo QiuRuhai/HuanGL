@@ -2,7 +2,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "../renderer/UniformBuffer.h"
+#include "../renderer/FrameContext.h"
 
 namespace HuanGL {
 
@@ -26,7 +26,7 @@ private:
     void Init();
     void Shutdown();
     void Update(float dt);
-    void Render();
+    void Render(float dt);
     void RegisterScene(std::unique_ptr<Scene> scene, std::string name);
     void CycleScene();
     void HandleHotkeys();
@@ -43,9 +43,8 @@ private:
     std::vector<std::string>            sceneNames_;
     size_t                              activeSceneIdx_ = 0;
 
-    std::unique_ptr<CameraUBO> cameraUBO_;
-    std::unique_ptr<LightsUBO> lightsUBO_;
-    std::unique_ptr<TimeUBO>   timeUBO_;
+    RenderSettings renderSettings_;
+    DebugSettings debugSettings_;
 
     float lastTime_ = 0.0f;
     bool  running_  = true;

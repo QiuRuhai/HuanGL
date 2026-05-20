@@ -3,7 +3,9 @@
 #include <string>
 #include <glm/glm.hpp>
 #include "../../renderer/Texture.h"
-#include "../../renderer/UniformBuffer.h"
+#include "../../renderer/FrameContext.h"
+#include "../../renderer/RenderSceneView.h"
+#include "../PipelineOutputs.h"
 
 namespace HuanGL {
 
@@ -11,20 +13,18 @@ class Shader;
 class VertexArray;
 class Buffer;
 class Framebuffer;
-class GBufferPass;
-class ShadowPass;
-class Scene;
 
 class LightingPass {
 public:
     void Init(int width, int height, const std::string& hdrPath);
     void Resize(int width, int height);
-    void Render(const GBufferPass& gbuffer, const ShadowPass& shadow,
-                const Scene& scene, const CameraData& camera);
+    LightingOutputs Render(const GBufferOutputs& gbuffer,
+                           const ShadowOutputs& shadow,
+                           const RenderSceneView& scene,
+                           const FrameContext& frame);
+    LightingOutputs GetOutputs() const;
 
     std::shared_ptr<Texture> GetHDROutput() const;
-    float GetAmbientStrength() const { return ambientStrength_; }
-    void  SetAmbientStrength(float v) { ambientStrength_ = v; }
 
 private:
     void GenerateIBL(const std::string& hdrPath);
@@ -43,7 +43,6 @@ private:
     std::unique_ptr<Buffer>      cubeVBO_;
     std::unique_ptr<VertexArray> dummyVAO_;
     int width_ = 0, height_ = 0;
-    float ambientStrength_ = 1.0f;
 };
 
 } // namespace HuanGL

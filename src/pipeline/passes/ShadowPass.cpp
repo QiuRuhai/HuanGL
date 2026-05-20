@@ -2,7 +2,6 @@
 #include "../../renderer/Shader.h"
 #include "../../renderer/Framebuffer.h"
 #include "../../renderer/Renderer.h"
-#include "../../scene/Scene.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdexcept>
 
@@ -95,8 +94,9 @@ static std::array<glm::vec3, 8> SubFrustumCorners(const glm::mat4& invViewProj,
     return sub;
 }
 
-void ShadowPass::Render(const Scene& scene, const CameraData& camera,
-                         const DirectionalLight& light) {
+ShadowOutputs ShadowPass::Render(const RenderSceneView& scene, const FrameContext& frame) {
+    const CameraData& camera = frame.camera;
+    const DirectionalLight& light = scene.sunLight;
     auto splits = ComputeCascadeSplits(camera.near_, camera.far_);
     auto invVP  = glm::inverse(camera.viewProj);
 
@@ -129,11 +129,15 @@ void ShadowPass::Render(const Scene& scene, const CameraData& camera,
 
         shader_->SetMat4("lightViewProj", lightVP);
 
-        for (size_t i = 0; i < scene.GetMeshCount(); ++i) {
-            shader_->SetMat4("model", scene.GetModelMatrix(i));
-            Mesh* mesh = scene.GetMesh(i);
+        for (const auto& renderable : scene.renderables) {
+            if (!renderable.mesh) {
+                continue;
+            }
+
+            shader_->SetMat4("model", renderable.modelMatrix);
+            const Mesh* mesh = renderable.mesh;
             mesh->vao->Bind();
-            for (auto& sub : mesh->subMeshes)
+            for (const auto& sub : mesh->subMeshes)
                 glDrawElements(GL_TRIANGLES, sub.indexCount, GL_UNSIGNED_INT,
                                (void*)(uintptr_t)(sub.indexOffset * sizeof(uint32_t)));
             mesh->vao->Unbind();
@@ -143,6 +147,14 @@ void ShadowPass::Render(const Scene& scene, const CameraData& camera,
 
     glDisable(GL_POLYGON_OFFSET_FILL);
     Framebuffer::BindDefault();
+    return GetOutputs();
+}
+
+ShadowOutputs ShadowPass::GetOutputs() const {
+    ShadowOutputs outputs;
+    outputs.shadowArray = shadowArrayID_;
+    outputs.cascades = cascades_;
+    return outputs;
 }
 
 } // namespace HuanGL

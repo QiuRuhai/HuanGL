@@ -2,21 +2,21 @@
 #include <memory>
 #include <array>
 #include "../../renderer/Schema.h"
-#include "../../renderer/UniformBuffer.h"
-#include "../CascadeData.h"
+#include "../../renderer/FrameContext.h"
+#include "../../renderer/RenderSceneView.h"
+#include "../PipelineOutputs.h"
 
 namespace HuanGL {
 
 class Shader;
 class Framebuffer;
-class Scene;
 
 class ShadowPass {
 public:
     void Init(int resolution = 2048);
     ~ShadowPass();
-    void Render(const Scene& scene, const CameraData& camera,
-                const DirectionalLight& light);
+    ShadowOutputs Render(const RenderSceneView& scene, const FrameContext& frame);
+    ShadowOutputs GetOutputs() const;
 
     GLuint GetShadowMapArray() const { return shadowArrayID_; }
     const std::array<CascadeData, 4>& GetCascades() const { return cascades_; }

@@ -1,19 +1,21 @@
 #pragma once
 #include <memory>
 #include "../../renderer/Texture.h"
-#include "../../renderer/UniformBuffer.h"
+#include "../../renderer/FrameContext.h"
+#include "../../renderer/RenderSceneView.h"
+#include "../PipelineOutputs.h"
 
 namespace HuanGL {
 
 class Shader;
 class Framebuffer;
-class Scene;
 
 class GBufferPass {
 public:
     void Init(int width, int height);
     void Resize(int width, int height);
-    void Render(const Scene& scene, const CameraData& camera);
+    GBufferOutputs Render(const RenderSceneView& scene, const FrameContext& frame);
+    GBufferOutputs GetOutputs() const;
 
     std::shared_ptr<Texture> GetAlbedoMetallic()  const;
     std::shared_ptr<Texture> GetNormalRoughness() const;

@@ -4,7 +4,6 @@
 #include "../../renderer/Renderer.h"
 #include "../../renderer/Schema.h"
 #include <stdexcept>
-#include "../../scene/Scene.h"
 #include <glm/gtc/type_ptr.hpp>
 
 namespace HuanGL {
@@ -29,7 +28,7 @@ void GBufferPass::Init(int w, int h) {
 
 void GBufferPass::Resize(int w, int h) { Init(w, h); }
 
-void GBufferPass::Render(const Scene& scene, const CameraData& camera) {
+GBufferOutputs GBufferPass::Render(const RenderSceneView& scene, const FrameContext& frame) {
     fbo_->Bind();
     Renderer::SetViewport(0, 0, width_, height_);
     Renderer::Clear(true, true, false);
@@ -38,16 +37,19 @@ void GBufferPass::Render(const Scene& scene, const CameraData& camera) {
     Renderer::SetDepthFunc(GL_LESS);
 
     shader_->Use();
-    shader_->SetMat4("viewProj", camera.viewProj);
+    shader_->SetMat4("viewProj", frame.camera.viewProj);
 
-    for (size_t i = 0; i < scene.GetMeshCount(); ++i) {
-        Mesh* mesh = scene.GetMesh(i);
-        glm::mat4 model = scene.GetModelMatrix(i);
-        shader_->SetMat4("model", model);
+    for (const auto& renderable : scene.renderables) {
+        if (!renderable.mesh || !renderable.materials) {
+            continue;
+        }
+
+        const Mesh* mesh = renderable.mesh;
+        shader_->SetMat4("model", renderable.modelMatrix);
 
         mesh->vao->Bind();
-        for (auto& sub : mesh->subMeshes) {
-            const Material& mat = scene.GetMaterials()[sub.materialIndex];
+        for (const auto& sub : mesh->subMeshes) {
+            const Material& mat = (*renderable.materials)[sub.materialIndex];
 
             shader_->SetInt("uHasAlbedoTex",    mat.albedoMap    ? 1 : 0);
             shader_->SetInt("uHasRoughnessTex", mat.roughnessMap ? 1 : 0);
@@ -69,6 +71,15 @@ void GBufferPass::Render(const Scene& scene, const CameraData& camera) {
         mesh->vao->Unbind();
     }
     Framebuffer::BindDefault();
+    return GetOutputs();
+}
+
+GBufferOutputs GBufferPass::GetOutputs() const {
+    GBufferOutputs outputs;
+    outputs.albedoMetallic = fbo_->GetColor(0);
+    outputs.normalRoughness = fbo_->GetColor(1);
+    outputs.depth = fbo_->GetDepth();
+    return outputs;
 }
 
 std::shared_ptr<Texture> GBufferPass::GetAlbedoMetallic()  const { return fbo_->GetColor(0); }
