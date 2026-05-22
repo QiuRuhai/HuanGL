@@ -27,7 +27,7 @@ Releasing the right mouse button immediately returns to UI mode.
 | File | Change |
 |------|--------|
 | `src/app/ApplicationState.h` | Add `bool cameraActive = false` |
-| `src/app/InputController.cpp` | On RMB press: set `cameraActive = true`, call `Input::SetCursorCaptured(true)`. On RMB release: set `cameraActive = false`, call `Input::SetCursorCaptured(false)`. Gate WASD shortcuts on `cameraActive`. |
+| `src/app/InputController.cpp` | On RMB press: set `cameraActive = true`, call `Input::SetCursorCaptured(true)`. On RMB release: set `cameraActive = false`, call `Input::SetCursorCaptured(false)`. |
 | `src/core/App.cpp` | Remove `Input::SetCursorCaptured(true)` from `Init`. Pass `state_.cameraActive && !state_.debugSettings.freezeCamera` to `Camera::Update`. |
 | `src/core/Camera.h` | Add `prevCapture_` bool member. When `capture` transitions from false to true, reset `first_ = true` to prevent a cursor-position jump on re-entry. |
 
@@ -56,7 +56,6 @@ The exact sub-path depends on the archive layout; adjust the registered path if 
 | File | Change |
 |------|--------|
 | `src/core/App.cpp` | Add `RegisterOptional` for NewSponza after the existing Sponza entry. Use scale `0.01f` and `centerScene = false`. |
-| `src/core/Camera.h` | Set default camera position to `{0, 1.5, 0}` facing `+Z` so the first scene view is inside the hall looking down the colonnade. |
 
 The existing `ModelScene` loader handles the glTF load; no new scene type is needed.
 
