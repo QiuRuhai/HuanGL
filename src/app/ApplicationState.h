@@ -13,6 +13,7 @@ struct FrameStats {
 
 struct ApplicationState {
     bool running = true;
+    bool cameraActive = false;
     SceneRegistry sceneRegistry;
     Camera camera {60.0f, 0.1f, 100.0f};
     RenderSettings renderSettings;
