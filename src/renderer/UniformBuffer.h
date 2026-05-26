@@ -15,7 +15,7 @@ struct CameraData {
     glm::mat4 invViewProj {};
     glm::mat4 unjitteredProj {};
     glm::mat4 unjitteredViewProj {};
-    glm::mat4 prevViewProj {};
+    glm::mat4 prevViewProj {}; // previous stable view-projection for TAA history
     glm::vec4 jitter {}; // xy = current jitter, zw = previous jitter
     glm::vec3 camPos {};
     float near_ = 0.1f;

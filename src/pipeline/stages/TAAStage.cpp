@@ -85,6 +85,8 @@ void TAAStage::Execute(PipelineResources& resources, const FrameContext& frame) 
     history_[historyReadIndex_]->Bind(2);
     shader_->SetMat4("uInvViewProj", frame.camera.invViewProj);
     shader_->SetMat4("uPrevViewProj", frame.camera.prevViewProj);
+    shader_->SetVec2("uCurrentJitter", glm::vec2(frame.camera.jitter.x,
+                                                 frame.camera.jitter.y));
     shader_->SetBool("uHistoryValid", historyValid_);
     shader_->SetFloat("uFeedback", std::clamp(frame.renderSettings.taa.feedback, 0.0f, 0.98f));
     DrawFullscreen();

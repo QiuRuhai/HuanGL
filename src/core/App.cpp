@@ -146,7 +146,7 @@ glm::vec2 App::ComputeTAAJitter(int width, int height) const {
 }
 
 void App::StorePreviousCameraState(const CameraData& camera) {
-    previousViewProj_ = camera.viewProj;
+    previousStableViewProj_ = camera.unjitteredViewProj;
     previousJitter_ = glm::vec2(camera.jitter.x, camera.jitter.y);
     hasPreviousCamera_ = true;
     ++taaFrameIndex_;
@@ -156,7 +156,7 @@ void App::InvalidateTemporalHistory() {
     hasPreviousCamera_ = false;
     taaFrameIndex_ = 0;
     previousJitter_ = glm::vec2(0.0f);
-    previousViewProj_ = glm::mat4(1.0f);
+    previousStableViewProj_ = glm::mat4(1.0f);
     if (pipeline_) {
         pipeline_->InvalidateHistory();
     }
@@ -176,7 +176,9 @@ FrameContext App::BuildFrameContext(float dt) {
         : 1.0f;
     const glm::vec2 jitter = ComputeTAAJitter(frame.width, frame.height);
     frame.camera = state_.camera.GetData(aspect, jitter);
-    frame.camera.prevViewProj = hasPreviousCamera_ ? previousViewProj_ : frame.camera.viewProj;
+    frame.camera.prevViewProj = hasPreviousCamera_
+        ? previousStableViewProj_
+        : frame.camera.unjitteredViewProj;
     frame.camera.jitter.z = previousJitter_.x;
     frame.camera.jitter.w = previousJitter_.y;
     return frame;

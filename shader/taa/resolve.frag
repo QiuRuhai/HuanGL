@@ -8,6 +8,7 @@ layout(binding = 2) uniform sampler2D uHistory;
 
 uniform mat4 uInvViewProj;
 uniform mat4 uPrevViewProj;
+uniform vec2 uCurrentJitter;
 uniform bool uHistoryValid;
 uniform float uFeedback;
 
@@ -15,6 +16,10 @@ vec3 WorldPosFromDepth(vec2 uv, float depth, mat4 invVP) {
     vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 world = invVP * clip;
     return world.xyz / world.w;
+}
+
+vec2 CurrentSampleUV(vec2 uv) {
+    return clamp(uv + uCurrentJitter * 0.5, vec2(0.0), vec2(1.0));
 }
 
 void NeighborhoodBounds(vec2 uv, out vec3 mn, out vec3 mx) {
@@ -32,20 +37,21 @@ void NeighborhoodBounds(vec2 uv, out vec3 mn, out vec3 mx) {
 }
 
 void main() {
-    vec3 current = texture(uCurrentHdr, vUV).rgb;
+    vec2 currentUV = CurrentSampleUV(vUV);
+    vec3 current = texture(uCurrentHdr, currentUV).rgb;
 
     if (!uHistoryValid) {
         FragColor = vec4(current, 1.0);
         return;
     }
 
-    float depth = texture(uDepth, vUV).r;
+    float depth = texture(uDepth, currentUV).r;
     if (depth >= 1.0 - 1e-6) {
         FragColor = vec4(current, 1.0);
         return;
     }
 
-    vec3 worldPos = WorldPosFromDepth(vUV, depth, uInvViewProj);
+    vec3 worldPos = WorldPosFromDepth(currentUV, depth, uInvViewProj);
     vec4 prevClip = uPrevViewProj * vec4(worldPos, 1.0);
     if (prevClip.w <= 0.0) {
         FragColor = vec4(current, 1.0);
@@ -60,7 +66,7 @@ void main() {
 
     vec3 history = texture(uHistory, historyUV).rgb;
     vec3 mn, mx;
-    NeighborhoodBounds(vUV, mn, mx);
+    NeighborhoodBounds(currentUV, mn, mx);
     history = clamp(history, mn, mx);
 
     vec3 resolved = mix(current, history, clamp(uFeedback, 0.0, 0.98));

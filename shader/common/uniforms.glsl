@@ -10,7 +10,7 @@ layout(std140, binding = 0) uniform CameraUBO {
     mat4 invViewProj;
     mat4 unjitteredProj;
     mat4 unjitteredViewProj;
-    mat4 prevViewProj;
+    mat4 prevViewProj; // previous stable view-projection for TAA history
     vec4 jitter; // xy = current jitter, zw = previous jitter
     vec3 camPos;
     float near_;

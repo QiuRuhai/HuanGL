@@ -44,7 +44,7 @@ private:
     InputController inputController_;
 
     float lastTime_ = 0.0f;
-    glm::mat4 previousViewProj_ = glm::mat4(1.0f);
+    glm::mat4 previousStableViewProj_ = glm::mat4(1.0f);
     glm::vec2 previousJitter_ = glm::vec2(0.0f);
     uint32_t taaFrameIndex_ = 0;
     bool hasPreviousCamera_ = false;
