@@ -42,6 +42,33 @@ void InputController::Update(ApplicationState& state) {
     if (Input::IsKeyJustPressed(GLFW_KEY_7) || Input::IsKeyJustPressed(GLFW_KEY_KP_7)) {
         state.debugSettings.view = DebugView::Bloom;
     }
+
+    // Right-click camera mode
+    bool rmb = Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);
+    state.cameraActive = rmb;
+
+    if (rmb && !wasCameraActive_) {
+        Input::SetCursorCaptured(true);
+    }
+    if (!rmb && wasCameraActive_) {
+        Input::SetCursorCaptured(false);
+    }
+    wasCameraActive_ = rmb;
+
+    // Camera movement (only while RMB held and camera not frozen)
+    if (state.cameraActive && !state.debugSettings.freezeCamera) {
+        glm::vec2 delta = Input::GetMouseDelta();
+        state.camera.Look(delta.x * 0.1f, delta.y * 0.1f);
+
+        glm::vec3 move{0};
+        if (Input::IsKeyPressed(GLFW_KEY_W)) move.z += 1.f;
+        if (Input::IsKeyPressed(GLFW_KEY_S)) move.z -= 1.f;
+        if (Input::IsKeyPressed(GLFW_KEY_A)) move.x -= 1.f;
+        if (Input::IsKeyPressed(GLFW_KEY_D)) move.x += 1.f;
+        if (Input::IsKeyPressed(GLFW_KEY_E)) move.y += 1.f;
+        if (Input::IsKeyPressed(GLFW_KEY_Q)) move.y -= 1.f;
+        state.camera.Move(move, state.frameStats.deltaTime);
+    }
 }
 
 } // namespace HuanGL

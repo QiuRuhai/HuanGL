@@ -54,8 +54,6 @@ void App::Init() {
             pipeline_->Resize(w, h);
     });
 
-    Input::SetCursorCaptured(true);
-
     resourceManager_ = std::make_unique<ResourceManager>();
 
     std::printf("[App] CWD: %s\n", std::filesystem::current_path().string().c_str());
@@ -95,7 +93,6 @@ void App::Run() {
 }
 
 void App::Update(float dt) {
-    state_.camera.Update(dt, window_->GetHandle(), !state_.debugSettings.freezeCamera);
     if (Scene* scene = state_.sceneRegistry.GetActiveScene()) {
         scene->Update(dt);
     }
