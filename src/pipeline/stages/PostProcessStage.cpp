@@ -2,6 +2,7 @@
 #include "ShadowStage.h"
 #include "GBufferStage.h"
 #include "LightingStage.h"
+#include "TAAStage.h"
 #include "BloomStage.h"
 #include "../PipelineResources.h"
 #include "../../renderer/Shader.h"
@@ -21,6 +22,8 @@ void PostProcessStage::Resize(int /*width*/, int /*height*/) {}
 
 void PostProcessStage::Execute(PipelineResources& resources, const FrameContext& frame) {
     const auto& lighting = resources.Get<LightingOutputs>();
+    const auto& taa = resources.Get<TAAOutputs>();
+    const std::shared_ptr<Texture>& hdrInput = taa.resolvedHdr ? taa.resolvedHdr : lighting.hdrColor;
     const auto& gbuffer = resources.Get<GBufferOutputs>();
     const auto& shadow = resources.Get<ShadowOutputs>();
     const auto& bloom = resources.Get<BloomOutputs>();
@@ -49,7 +52,7 @@ void PostProcessStage::Execute(PipelineResources& resources, const FrameContext&
         shader_->SetFloat("uCascadeFar[" + std::to_string(c) + "]", cascades[c].farPlane);
     }
 
-    lighting.hdrColor->Bind(0);
+    hdrInput->Bind(0);
     gbuffer.albedoMetallic->Bind(1);
     gbuffer.normalRoughness->Bind(2);
     gbuffer.depth->Bind(3);
