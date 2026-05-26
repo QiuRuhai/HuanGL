@@ -30,7 +30,7 @@ inline int ToShaderDebugView(DebugView view) {
 }
 
 struct TAASettings {
-    bool enabled = false;
+    bool enabled = true;
     float feedback = 0.90f;
 };
 

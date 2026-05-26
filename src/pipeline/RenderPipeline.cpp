@@ -2,6 +2,7 @@
 #include "stages/ShadowStage.h"
 #include "stages/GBufferStage.h"
 #include "stages/LightingStage.h"
+#include "stages/TAAStage.h"
 #include "stages/BloomStage.h"
 #include "stages/PostProcessStage.h"
 #include "../renderer/Renderer.h"
@@ -12,6 +13,7 @@ void RenderPipeline::BuildStages(const std::string& hdrPath) {
     stages_.push_back(std::make_unique<ShadowStage>(2048));
     stages_.push_back(std::make_unique<GBufferStage>());
     stages_.push_back(std::make_unique<LightingStage>(hdrPath));
+    stages_.push_back(std::make_unique<TAAStage>());
     stages_.push_back(std::make_unique<BloomStage>());
     stages_.push_back(std::make_unique<PostProcessStage>());
 }
