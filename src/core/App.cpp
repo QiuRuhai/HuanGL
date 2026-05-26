@@ -65,8 +65,10 @@ void App::Init() {
 
     window_->SetResizeCallback([this](int w, int h) {
         Renderer::SetViewport(0, 0, w, h);
-        if (w > 0 && h > 0 && pipeline_)
+        if (w > 0 && h > 0 && pipeline_) {
             pipeline_->Resize(w, h);
+            InvalidateTemporalHistory();
+        }
     });
 
     resourceManager_ = std::make_unique<ResourceManager>();
@@ -94,13 +96,23 @@ void App::Run() {
 
         Input::Update();
         window_->PollEvents();
+        const size_t sceneBeforeInput = state_.sceneRegistry.GetActiveIndex();
         inputController_.Update(state_, dt);
+        if (!state_.sceneRegistry.Empty() &&
+            sceneBeforeInput != state_.sceneRegistry.GetActiveIndex()) {
+            InvalidateTemporalHistory();
+        }
 
         Update(dt);
         Render(dt);
 
         imguiLayer_->BeginFrame();
+        const size_t sceneBeforeUI = state_.sceneRegistry.GetActiveIndex();
         debugUI_->Draw(state_);
+        if (!state_.sceneRegistry.Empty() &&
+            sceneBeforeUI != state_.sceneRegistry.GetActiveIndex()) {
+            InvalidateTemporalHistory();
+        }
         imguiLayer_->EndFrame();
 
         window_->SwapBuffers();
@@ -145,6 +157,9 @@ void App::InvalidateTemporalHistory() {
     taaFrameIndex_ = 0;
     previousJitter_ = glm::vec2(0.0f);
     previousViewProj_ = glm::mat4(1.0f);
+    if (pipeline_) {
+        pipeline_->InvalidateHistory();
+    }
 }
 
 FrameContext App::BuildFrameContext(float dt) {

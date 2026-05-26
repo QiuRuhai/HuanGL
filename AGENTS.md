@@ -138,9 +138,11 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | File | Responsibility |
 |------|----------------|
 | `src/pipeline/stages/BloomStage.h/cpp` | Multi-mip Bloom stage with soft-knee bright extract, downsample chain, and upsample combine |
+| `src/pipeline/stages/TAAStage.h/cpp` | Temporal Anti-Aliasing stage with jittered reprojection, history ping-pong, and neighborhood clamp |
 | `shader/bloom/bright_extract.frag` | Soft-knee bright HDR radiance extraction for Bloom |
 | `shader/bloom/downsample.frag` | Filtered downsample pass for the Bloom mip chain |
 | `shader/bloom/upsample.frag` | Upsample-and-combine pass for reconstructing broad Bloom |
+| `shader/taa/resolve.frag` | TAA resolve shader using depth reprojection and 3x3 history clamp |
 | `shader/postprocess/postprocess.frag` | Composites optional Bloom before tone mapping and exposes Bloom debug view |
 
 ## Current Directory Structure

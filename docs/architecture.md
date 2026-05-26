@@ -52,7 +52,7 @@ Runtime controls:
 Each frame the active `World` is adapted into a read-only
 `RenderSceneView`, and per-frame camera/settings/time data are packaged
 into a `FrameContext`. `RenderPipeline` updates shared UBOs from those
-contracts, then runs five stages in fixed order. Stage inputs and outputs
+contracts, then runs six stages in fixed order. Stage inputs and outputs
 use the formats below:
 
 ```
@@ -69,10 +69,13 @@ World → RenderSceneView + FrameContext
         └─► LightingStage   ← reads GBufferOutputs + ShadowOutputs + IBL
              │                 writes LightingOutputs (RGBA16F HDR target)
              ▼
+        TAAStage           → TAAOutputs
+             │                 resolved HDR target with temporal history
+             ▼
         BloomStage          → BloomOutputs
              │                 multi-mip HDR bloom texture (level 0 composite)
              ▼
-        PostProcessStage    ← reads Lighting/GBuffer/Shadow/Bloom outputs
+        PostProcessStage    ← reads TAA/Lighting/GBuffer/Shadow/Bloom outputs
              │                 composite + tone map + gamma + debug overlay
              ▼
         Backbuffer
@@ -227,10 +230,11 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 - Multi-mip HDR Bloom through `BloomStage`: soft-knee bright
   extraction, filtered downsample chain, upsample-and-combine chain, and
   final contribution composited pre-tone-map.
-- Temporal Anti-Aliasing with a history buffer and jittered projection
-  matrix; resolves to the same RGBA16F target.
-- Additional tone-map operators (Uncharted 2 filmic, AgX) selectable
-  alongside ACES and Reinhard.
+- Temporal Anti-Aliasing through `TAAStage`: 8-sample Halton jitter,
+  depth reprojection, RGBA16F history ping-pong, resize/scene-switch
+  invalidation, and 3x3 neighborhood history clamp.
+- Additional tone-map operator: AgX, selectable alongside ACES,
+  Reinhard, and linear output.
 
 **Depends on.** Phase 2.5 (HDR target, PostProcess stage).
 
