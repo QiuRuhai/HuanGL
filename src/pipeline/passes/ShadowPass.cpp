@@ -20,8 +20,8 @@ static std::array<float, 4> ComputeCascadeSplits(float nearP, float farP, float 
 
 void ShadowPass::Init(int resolution) {
     resolution_ = resolution;
-    shader_ = std::make_unique<Shader>("../shader/shadow/csm.vert",
-                                       "../shader/shadow/csm.frag");
+    shader_ = std::make_unique<Shader>("shadow/csm.vert",
+                                       "shadow/csm.frag");
 
     glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &shadowArrayID_);
     glTextureStorage3D(shadowArrayID_, 1, GL_DEPTH_COMPONENT24,

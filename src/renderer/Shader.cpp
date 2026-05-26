@@ -6,6 +6,12 @@
 
 namespace HuanGL {
 
+std::string Shader::basePath_;
+
+void Shader::SetBasePath(const std::string& basePath) {
+    basePath_ = basePath;
+}
+
 Shader::Shader(const std::string& vert, const std::string& frag) {
     id_ = glCreateProgram();
     GLuint vs = Compile(vert, GL_VERTEX_SHADER);
@@ -78,7 +84,8 @@ void Shader::SetMat4(const std::string& n, const glm::mat4& m) const {
 }
 
 GLuint Shader::Compile(const std::string& path, GLenum type) const {
-    std::string src = ReadFile(path);
+    std::string resolvedPath = basePath_.empty() ? path : basePath_ + path;
+    std::string src = ReadFile(resolvedPath);
     const char* cstr = src.c_str();
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &cstr, nullptr);
@@ -90,7 +97,7 @@ GLuint Shader::Compile(const std::string& path, GLenum type) const {
         char log[1024];
         glGetShaderInfoLog(shader, sizeof(log), nullptr, log);
         glDeleteShader(shader);
-        throw std::runtime_error("[Shader] Compile error in " + path + ":\n" + log);
+        throw std::runtime_error("[Shader] Compile error in " + resolvedPath + ":\n" + log);
     }
     return shader;
 }

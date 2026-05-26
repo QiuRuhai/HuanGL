@@ -42,14 +42,14 @@ void LightingPass::Init(int width, int height, const std::string& hdrPath) {
     width_ = width; height_ = height;
     CreateHDRFBO(width, height);
 
-    pbrShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                          "../shader/lighting/pbr_ibl.frag");
-    irrShader_ = std::make_unique<Shader>("../shader/lighting/cube.vert",
-                                          "../shader/lighting/irradiance.frag");
-    pfShader_ = std::make_unique<Shader>("../shader/lighting/cube.vert",
-                                         "../shader/lighting/prefilter.frag");
-    brdfShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                           "../shader/lighting/brdf_lut.frag");
+    pbrShader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                          "lighting/pbr_ibl.frag");
+    irrShader_ = std::make_unique<Shader>("lighting/cube.vert",
+                                          "lighting/irradiance.frag");
+    pfShader_ = std::make_unique<Shader>("lighting/cube.vert",
+                                         "lighting/prefilter.frag");
+    brdfShader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                           "lighting/brdf_lut.frag");
 
     captureFBO_ = std::make_unique<Framebuffer>(512, 512);
     captureFBO_->AttachDepthRenderbuffer();
@@ -87,8 +87,8 @@ void LightingPass::GenerateIBL(const std::string& hdrPath) {
 
     // Equirect to cubemap (512^2)
     auto envCubemap = Texture::CreateCubemap(512, GL_RGB16F, true);
-    Shader eqShader("../shader/lighting/cube.vert",
-                    "../shader/lighting/equirect_to_cubemap.frag");
+    Shader eqShader("lighting/cube.vert",
+                    "lighting/equirect_to_cubemap.frag");
     eqShader.Use();
     hdrTex->Bind(0);
 

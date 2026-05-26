@@ -12,12 +12,12 @@ constexpr int kMaxBloomMips = 6;
 }
 
 void BloomTechnique::Init(int width, int height) {
-    extractShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                              "../shader/bloom/bright_extract.frag");
-    downsampleShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                                 "../shader/bloom/downsample.frag");
-    upsampleShader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                               "../shader/bloom/upsample.frag");
+    extractShader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                              "bloom/bright_extract.frag");
+    downsampleShader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                                 "bloom/downsample.frag");
+    upsampleShader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                               "bloom/upsample.frag");
     dummyVAO_ = std::make_unique<VertexArray>();
     CreateResources(width, height);
 }

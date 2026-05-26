@@ -3,6 +3,7 @@
 #include "Window.h"
 #include "Input.h"
 #include "../renderer/Renderer.h"
+#include "../renderer/Shader.h"
 #include "../scene/Scene.h"
 #include "../scene/TestScene.h"
 #include "../scene/ModelScene.h"
@@ -44,6 +45,7 @@ void App::Init() {
     imguiLayer_->Init(window_->GetHandle());
     debugUI_ = std::make_unique<DebugUI>();
     Renderer::Init();
+    Shader::SetBasePath("../shader/");
     Renderer::SetViewport(0, 0, window_->GetWidth(), window_->GetHeight());
 
     window_->SetResizeCallback([this](int w, int h) {

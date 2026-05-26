@@ -35,8 +35,11 @@ public:
 
     GLuint GetID() const { return id_; }
 
+    static void SetBasePath(const std::string& basePath);
+
 private:
     GLuint id_ = 0;
+    static std::string basePath_;
 
     GLuint Compile(const std::string& path, GLenum type) const;
     std::string ReadFile(const std::string& path) const;

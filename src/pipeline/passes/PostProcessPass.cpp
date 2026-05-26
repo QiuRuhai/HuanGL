@@ -7,8 +7,8 @@
 namespace HuanGL {
 
 void PostProcessPass::Init() {
-    shader_ = std::make_unique<Shader>("../shader/lighting/fullscreen.vert",
-                                       "../shader/postprocess/postprocess.frag");
+    shader_ = std::make_unique<Shader>("lighting/fullscreen.vert",
+                                       "postprocess/postprocess.frag");
     dummyVAO_ = std::make_unique<VertexArray>();
 }
 

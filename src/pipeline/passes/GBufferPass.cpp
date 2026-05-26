@@ -10,8 +10,8 @@ namespace HuanGL {
 
 void GBufferPass::Init(int w, int h) {
     width_ = w; height_ = h;
-    shader_ = std::make_unique<Shader>("../shader/gbuffer/gbuffer.vert",
-                                       "../shader/gbuffer/gbuffer.frag");
+    shader_ = std::make_unique<Shader>("gbuffer/gbuffer.vert",
+                                       "gbuffer/gbuffer.frag");
     fbo_ = std::make_unique<Framebuffer>(w, h);
 
     auto rt0 = Texture::Create2D(w, h, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
