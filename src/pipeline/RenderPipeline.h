@@ -14,6 +14,7 @@ class RenderPipeline {
 public:
     void Init(int width, int height, const std::string& hdrPath);
     void Resize(int width, int height);
+    void InvalidateHistory();
     void Execute(const RenderSceneView& scene, const FrameContext& frame);
 
 private:

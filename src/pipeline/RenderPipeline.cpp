@@ -31,6 +31,11 @@ void RenderPipeline::Resize(int w, int h) {
         stage->Resize(w, h);
 }
 
+void RenderPipeline::InvalidateHistory() {
+    for (auto& stage : stages_)
+        stage->InvalidateHistory();
+}
+
 void RenderPipeline::UpdateUniformBuffers(const RenderSceneView& scene,
                                           const FrameContext& frame) {
     cameraUBO_->Update(frame.camera);

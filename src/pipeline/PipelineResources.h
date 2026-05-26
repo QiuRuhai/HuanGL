@@ -1,6 +1,7 @@
 #pragma once
 #include <any>
 #include <stdexcept>
+#include <string>
 #include <typeindex>
 #include <unordered_map>
 
@@ -16,8 +17,10 @@ public:
     template<typename T>
     const T& Get() const {
         auto it = resources_.find(std::type_index(typeid(T)));
-        if (it == resources_.end())
-            throw std::runtime_error("PipelineResources: missing resource");
+        if (it == resources_.end()) {
+            throw std::runtime_error(
+                std::string("PipelineResources: missing resource: ") + typeid(T).name());
+        }
         return std::any_cast<const T&>(it->second);
     }
 
