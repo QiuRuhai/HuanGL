@@ -16,6 +16,21 @@
 
 namespace HuanGL {
 
+namespace {
+
+float Halton(uint32_t index, uint32_t base) {
+    float f = 1.0f;
+    float result = 0.0f;
+    while (index > 0) {
+        f /= static_cast<float>(base);
+        result += f * static_cast<float>(index % base);
+        index /= base;
+    }
+    return result;
+}
+
+} // namespace
+
 App::App()  { Init(); }
 App::~App() { Shutdown(); }
 
@@ -102,7 +117,37 @@ void App::Update(float dt) {
     state_.frameStats.fps = dt > 0.0f ? 1.0f / dt : 0.0f;
 }
 
-FrameContext App::BuildFrameContext(float dt) const {
+glm::vec2 App::ComputeTAAJitter(int width, int height) const {
+    if (!state_.renderSettings.taa.enabled || width <= 0 || height <= 0) {
+        return glm::vec2(0.0f);
+    }
+
+    const uint32_t sampleIndex = (taaFrameIndex_ % 8u) + 1u;
+    glm::vec2 sample {
+        Halton(sampleIndex, 2u) - 0.5f,
+        Halton(sampleIndex, 3u) - 0.5f
+    };
+    return glm::vec2(
+        sample.x * 2.0f / static_cast<float>(width),
+        sample.y * 2.0f / static_cast<float>(height)
+    );
+}
+
+void App::StorePreviousCameraState(const CameraData& camera) {
+    previousViewProj_ = camera.viewProj;
+    previousJitter_ = glm::vec2(camera.jitter.x, camera.jitter.y);
+    hasPreviousCamera_ = true;
+    ++taaFrameIndex_;
+}
+
+void App::InvalidateTemporalHistory() {
+    hasPreviousCamera_ = false;
+    taaFrameIndex_ = 0;
+    previousJitter_ = glm::vec2(0.0f);
+    previousViewProj_ = glm::mat4(1.0f);
+}
+
+FrameContext App::BuildFrameContext(float dt) {
     FrameContext frame;
     frame.width = window_->GetWidth();
     frame.height = window_->GetHeight();
@@ -114,7 +159,11 @@ FrameContext App::BuildFrameContext(float dt) const {
     float aspect = frame.height > 0
         ? static_cast<float>(frame.width) / static_cast<float>(frame.height)
         : 1.0f;
-    frame.camera = state_.camera.GetData(aspect);
+    const glm::vec2 jitter = ComputeTAAJitter(frame.width, frame.height);
+    frame.camera = state_.camera.GetData(aspect, jitter);
+    frame.camera.prevViewProj = hasPreviousCamera_ ? previousViewProj_ : frame.camera.viewProj;
+    frame.camera.jitter.z = previousJitter_.x;
+    frame.camera.jitter.w = previousJitter_.y;
     return frame;
 }
 
@@ -133,6 +182,7 @@ void App::Render(float dt) {
     Renderer::Clear();
 
     pipeline_->Execute(sceneView, frame);
+    StorePreviousCameraState(frame.camera);
 }
 
 } // namespace HuanGL

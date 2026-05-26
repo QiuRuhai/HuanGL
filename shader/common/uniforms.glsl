@@ -7,6 +7,11 @@ layout(std140, binding = 0) uniform CameraUBO {
     mat4 viewProj;
     mat4 invView;
     mat4 invProj;
+    mat4 invViewProj;
+    mat4 unjitteredProj;
+    mat4 unjitteredViewProj;
+    mat4 prevViewProj;
+    vec4 jitter; // xy = current jitter, zw = previous jitter
     vec3 camPos;
     float near_;
     float far_;

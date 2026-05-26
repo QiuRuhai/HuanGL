@@ -1,5 +1,7 @@
 #pragma once
+#include <cstdint>
 #include <memory>
+#include <glm/glm.hpp>
 #include "../app/ApplicationState.h"
 #include "../app/InputController.h"
 #include "../renderer/FrameContext.h"
@@ -27,7 +29,10 @@ private:
     void Update(float dt);
     void Render(float dt);
     void RegisterScenes();
-    FrameContext BuildFrameContext(float dt) const;
+    glm::vec2 ComputeTAAJitter(int width, int height) const;
+    void StorePreviousCameraState(const CameraData& camera);
+    void InvalidateTemporalHistory();
+    FrameContext BuildFrameContext(float dt);
 
     std::unique_ptr<Window>          window_;
     std::unique_ptr<RenderPipeline>  pipeline_;
@@ -39,6 +44,10 @@ private:
     InputController inputController_;
 
     float lastTime_ = 0.0f;
+    glm::mat4 previousViewProj_ = glm::mat4(1.0f);
+    glm::vec2 previousJitter_ = glm::vec2(0.0f);
+    uint32_t taaFrameIndex_ = 0;
+    bool hasPreviousCamera_ = false;
 };
 
 } // namespace HuanGL

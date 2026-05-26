@@ -11,7 +11,7 @@ public:
     void Look(float yawDelta, float pitchDelta);
     void Move(glm::vec3 localDelta, float dt);
 
-    CameraData GetData(float aspect) const;
+    CameraData GetData(float aspect, glm::vec2 jitter = glm::vec2(0.0f)) const;
 
     glm::vec3 GetPosition() const { return pos_; }
     float GetFov() const;

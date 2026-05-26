@@ -7,15 +7,20 @@ namespace HuanGL {
 // CPU-side mirror of shader/common/uniforms.glsl — must stay in sync.
 
 struct CameraData {
-    glm::mat4 view      {};
-    glm::mat4 proj      {};
-    glm::mat4 viewProj  {};
-    glm::mat4 invView   {};
-    glm::mat4 invProj   {};
-    glm::vec3 camPos    {};
-    float     near_     = 0.1f;
-    float     far_      = 100.f;
-    float     pad[3]    = {};
+    glm::mat4 view {};
+    glm::mat4 proj {};
+    glm::mat4 viewProj {};
+    glm::mat4 invView {};
+    glm::mat4 invProj {};
+    glm::mat4 invViewProj {};
+    glm::mat4 unjitteredProj {};
+    glm::mat4 unjitteredViewProj {};
+    glm::mat4 prevViewProj {};
+    glm::vec4 jitter {}; // xy = current jitter, zw = previous jitter
+    glm::vec3 camPos {};
+    float near_ = 0.1f;
+    float far_ = 100.f;
+    float pad[3] = {};
 };
 
 struct LightsData {

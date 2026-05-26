@@ -26,16 +26,23 @@ void Camera::Move(glm::vec3 localDelta, float dt) {
     pos_ += up * localDelta.y * spd;
 }
 
-CameraData Camera::GetData(float aspect) const {
+CameraData Camera::GetData(float aspect, glm::vec2 jitter) const {
     CameraData d;
-    d.view     = glm::lookAt(pos_, pos_ + front_, worldUp_);
-    d.proj     = glm::perspective(fov_, aspect, near_, far_);
+    d.view = glm::lookAt(pos_, pos_ + front_, worldUp_);
+    d.unjitteredProj = glm::perspective(fov_, aspect, near_, far_);
+    d.proj = d.unjitteredProj;
+    d.proj[2][0] += jitter.x;
+    d.proj[2][1] += jitter.y;
     d.viewProj = d.proj * d.view;
-    d.invView  = glm::inverse(d.view);
-    d.invProj  = glm::inverse(d.proj);
-    d.camPos   = pos_;
-    d.near_    = near_;
-    d.far_     = far_;
+    d.unjitteredViewProj = d.unjitteredProj * d.view;
+    d.invView = glm::inverse(d.view);
+    d.invProj = glm::inverse(d.proj);
+    d.invViewProj = glm::inverse(d.viewProj);
+    d.prevViewProj = d.viewProj;
+    d.jitter = glm::vec4(jitter, 0.0f, 0.0f);
+    d.camPos = pos_;
+    d.near_ = near_;
+    d.far_ = far_;
     return d;
 }
 
