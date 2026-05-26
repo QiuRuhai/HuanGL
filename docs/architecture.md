@@ -241,7 +241,8 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 **Independent of.** Phase 3.
 
 **Risk.** TAA history invalidation on scene swap or window resize.
-Mitigation: clear the history buffer on resize and on `N`-key press.
+Mitigation: clear the history buffer on resize and when the active scene
+changes through keyboard or DebugUI controls.
 
 ### Phase 5 — Reflective Shadow Maps (RSM)
 
