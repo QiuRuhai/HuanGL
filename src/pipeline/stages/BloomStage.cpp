@@ -1,6 +1,5 @@
 #include "BloomStage.h"
 #include "LightingStage.h"
-#include "TAAStage.h"
 #include "../PipelineResources.h"
 #include "../../renderer/Renderer.h"
 #include "../../renderer/FrameContext.h"
@@ -76,10 +75,8 @@ void BloomStage::DrawFullscreen() const {
 void BloomStage::Execute(PipelineResources& resources, const FrameContext& frame) {
     const auto& settings = frame.renderSettings.bloom;
     const auto& lighting = resources.Get<LightingOutputs>();
-    const auto& taa = resources.Get<TAAOutputs>();
-    const std::shared_ptr<Texture>& hdrInput = taa.resolvedHdr ? taa.resolvedHdr : lighting.hdrColor;
 
-    if (!settings.enabled || !hdrInput || downMips_.empty()) {
+    if (!settings.enabled || !lighting.hdrColor || downMips_.empty()) {
         resources.Set(BloomOutputs{});
         return;
     }
@@ -99,7 +96,7 @@ void BloomStage::Execute(PipelineResources& resources, const FrameContext& frame
     extractShader_->Use();
     extractShader_->SetFloat("uThreshold", settings.threshold);
     extractShader_->SetFloat("uSoftKnee", settings.softKnee);
-    hdrInput->Bind(0);
+    lighting.hdrColor->Bind(0);
     DrawFullscreen();
 
     downsampleShader_->Use();
@@ -113,6 +110,7 @@ void BloomStage::Execute(PipelineResources& resources, const FrameContext& frame
         downsampleShader_->SetVec2("uTexelSize",
                                    glm::vec2(1.0f / source.width,
                                              1.0f / source.height));
+        downsampleShader_->SetBool("uFirstPass", i == 1);
         source.texture->Bind(0);
         DrawFullscreen();
     }

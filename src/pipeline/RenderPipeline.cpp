@@ -13,8 +13,8 @@ void RenderPipeline::BuildStages(const std::string& hdrPath) {
     stages_.push_back(std::make_unique<ShadowStage>(2048));
     stages_.push_back(std::make_unique<GBufferStage>());
     stages_.push_back(std::make_unique<LightingStage>(hdrPath));
-    stages_.push_back(std::make_unique<TAAStage>());
     stages_.push_back(std::make_unique<BloomStage>());
+    stages_.push_back(std::make_unique<TAAStage>());
     stages_.push_back(std::make_unique<PostProcessStage>());
 }
 
