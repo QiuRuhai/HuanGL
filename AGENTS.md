@@ -113,7 +113,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 |------|----------------|
 | `src/pipeline/stages/PostProcessStage.h/cpp` | Tone mapping, gamma, debug visualization |
 | `src/scene/ModelScene.h/cpp` | Loads a model via `MeshLoader`, adds optional floor |
-| `shader/postprocess/postprocess.frag` | ACES / Reinhard / linear tone map plus seven debug modes |
+| `shader/postprocess/postprocess.frag` | ACES / Reinhard / AgX / None tone-map modes plus seven debug modes |
 | `src/renderer/Texture.h/cpp` | Adds `Load2DFromMemory` for `.glb` embedded textures |
 | `src/resource/MeshLoader.h/cpp` | Extends to extract PBR textures and handle `*N` embedded paths |
 | `src/core/Input.h/cpp` | Adds `IsKeyJustPressed` via GLFW key callback |

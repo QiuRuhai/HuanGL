@@ -20,10 +20,11 @@ over engine-grade flexibility.
 
 ## Current Capability
 
-As of the Phase 4 Bloom step the renderer can load glTF (external or
+As of Phase 4 postprocess polish the renderer can load glTF (external or
 `.glb` embedded), OBJ, and FBX assets through Assimp; render them through
 a deferred PBR pipeline with cascaded shadow maps, image-based lighting,
-multi-mip HDR Bloom, and a selectable tone-map operator; and switch
+multi-mip HDR Bloom, Temporal Anti-Aliasing, and selectable
+ACES/Reinhard/AgX/None tone mapping; and switch
 between registered scenes at runtime. Debug visualization modes inspect
 the GBuffer channels, linear depth, shadow cascades, and Bloom
 contribution.
@@ -36,7 +37,7 @@ Runtime controls:
 | `W` `A` `S` `D` (while RMB held) | Camera translation |
 | `Mouse` (while RMB held) | Camera look |
 | `N` | Cycle registered scenes |
-| `T` | Cycle tone-map operator (ACES / Reinhard / linear) |
+| `T` | Cycle tone-map operator (ACES / Reinhard / AgX / None) |
 | `0` | Final composite |
 | `1` | Albedo channel |
 | `2` | World-space normal |
@@ -233,8 +234,7 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 - Temporal Anti-Aliasing through `TAAStage`: 8-sample Halton jitter,
   depth reprojection, RGBA16F history ping-pong, resize/scene-switch
   invalidation, and 3x3 neighborhood history clamp.
-- Additional tone-map operator: AgX, selectable alongside ACES,
-  Reinhard, and linear output.
+- Tone-map modes: ACES, Reinhard, AgX, and None.
 
 **Depends on.** Phase 2.5 (HDR target, PostProcess stage).
 
