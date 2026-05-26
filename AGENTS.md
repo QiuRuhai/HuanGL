@@ -60,13 +60,13 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - MSVC does not accept single-line ternary statements such as `{ e ? glEnable(...) : glDisable(...); }`; use `if`/`else`.
 - Reconstruct world position from depth and inverse view-proj in the lighting pass; do not write world position to a GBuffer attachment.
 - Use `sampler2DArrayShadow` for CSM and let the hardware perform the depth comparison; cascade selection uses view-space Z.
-- Tone mapping lives in `PostProcessPass`, not in the lighting shader. `LightingPass` writes raw HDR radiance to an RGBA16F target so future passes (Bloom, TAA) can read it.
+- Tone mapping lives in `PostProcessStage`, not in the lighting shader. `LightingStage` writes raw HDR radiance to an RGBA16F target so future stages (Bloom, TAA) can read it.
 - All render passes and techniques implement `IPipelineStage` and live under `src/pipeline/stages/`. `RenderPipeline` iterates a vector of stages — ordering is explicit, not graph-resolved. Do not add a full render graph or RHI.
 - Re-orthogonalize the TBN basis in the fragment shader, not the vertex shader. Interpolation destroys vertex-side orthogonality.
 - Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
 - `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
 - `App` registers scenes with soft failure: if a model file is missing or fails to load, the app logs and skips, continuing with the remaining registered scenes.
-- Debug UI edits `ApplicationState` and `World`; render passes read `FrameContext` and `RenderSceneView`. Do not let ImGui mutate pass internals directly.
+- Debug UI edits `ApplicationState` and `World`; render stages read `FrameContext` and `RenderSceneView`. Do not let ImGui mutate stage internals directly.
 - `packed`, `near`, and `far` are reserved or potentially reserved names in GLSL across drivers. Avoid them as GLSL identifiers.
 
 ## Current Progress
@@ -102,7 +102,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/scene/Scene.h` | Scene interface with mesh/material/light access |
 | `src/scene/TestScene.h/cpp` | Procedural test scene (floor + spheres + PBR factor materials) |
 | `src/renderer/Schema.h` | `Mesh`, `SubMesh`, `Material`, `DirectionalLight`, `Vertex` schemas |
-| `src/core/Camera.h/cpp` | Free-fly camera, WASD plus mouse look |
+| `src/core/Camera.h/cpp` | Free-fly camera (pure math, no GLFW), RMB-gated WASD + mouse look |
 | `shader/gbuffer/*.{vert,frag}` | GBuffer fill |
 | `shader/shadow/csm.vert` | Cascade depth render |
 | `shader/lighting/*.{vert,frag}` | PBR+IBL, IBL precompute (equirect→cubemap, irradiance, prefilter, BRDF LUT), fullscreen helper |

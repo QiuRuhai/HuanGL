@@ -32,8 +32,9 @@ Runtime controls:
 
 | Input | Action |
 |-------|--------|
-| `W` `A` `S` `D` | Camera translation |
-| `Mouse` | Camera look |
+| `RMB` (hold) | Enable camera mode |
+| `W` `A` `S` `D` (while RMB held) | Camera translation |
+| `Mouse` (while RMB held) | Camera look |
 | `N` | Cycle registered scenes |
 | `T` | Cycle tone-map operator (ACES / Reinhard / linear) |
 | `0` | Final composite |
@@ -51,7 +52,7 @@ Runtime controls:
 Each frame the active `World` is adapted into a read-only
 `RenderSceneView`, and per-frame camera/settings/time data are packaged
 into a `FrameContext`. `RenderPipeline` updates shared UBOs from those
-contracts, then runs four passes in fixed order. Pass inputs and outputs
+contracts, then runs five stages in fixed order. Stage inputs and outputs
 use the formats below:
 
 ```
@@ -113,7 +114,7 @@ routine file additions.
 Each decision lists what was chosen, why, and the trade-off accepted.
 
 **Deferred shading with depth-reconstructed world position.** GBuffer
-stores albedo+metallic and normal+roughness only; LightingPass
+stores albedo+metallic and normal+roughness only; LightingStage
 reconstructs world position from depth and the inverse view-projection
 matrix. Saves one RGBA16F render target per frame at the cost of one
 extra matrix multiply per fragment in the lighting pass.
@@ -133,8 +134,8 @@ thin abstraction would dilute the educational purpose and slow
 iteration. The cost is that porting to Vulkan or D3D12 would be a
 rewrite, which is acceptable for a learning project.
 
-**Tone mapping in a separate pass.** LightingPass writes raw HDR
-radiance to an RGBA16F target; PostProcessPass applies the tone map and
+**Tone mapping in a separate stage.** LightingStage writes raw HDR
+radiance to an RGBA16F target; PostProcessStage applies the tone map and
 gamma. Keeps the HDR signal available for post-lighting techniques such
 as Bloom and TAA.
 
@@ -146,10 +147,10 @@ stage reads upstream outputs and writes its own output through a typed
 graph-resolved. Adding a new technique means creating one stage file and
 registering it in `BuildStages`; no other files change.
 
-**UI edits state, passes read frame contracts.** ImGui controls mutate
-`ApplicationState` and the active `World`; render passes read
+**UI edits state, stages read frame contracts.** ImGui controls mutate
+`ApplicationState` and the active `World`; render stages read
 `FrameContext` and `RenderSceneView`. This keeps debug tooling from
-depending on pass internals and makes future pass settings explicit.
+depending on stage internals and makes future stage settings explicit.
 
 **Tangent-space normal mapping with fragment-side Gram-Schmidt.** The
 vertex shader passes raw (un-normalized, un-orthogonalized) tangent;
@@ -204,12 +205,12 @@ ImGui to render pass internals.
   so `App` stays focused on lifecycle and frame scheduling.
 - `src/scene/World.h/cpp` with lightweight `Entity`, `Transform`, and
   `MeshRenderer` data.
-- `FrameContext`, `RenderSceneView`, and `PipelineOutputs` contracts so
+- `FrameContext`, `RenderSceneView`, and `PipelineResources` contracts so
   the fixed render pipeline has explicit inputs and resource handoffs.
 - Optional future ImGuizmo integration for manipulating selected
   entities.
 
-**Depends on.** Phase 2.5 (PostProcessPass exposes the runtime knobs the
+**Depends on.** Phase 2.5 (PostProcessStage exposes the runtime knobs the
 UI will drive).
 
 **Independent of.** Phase 4.
@@ -223,7 +224,7 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 **Goal.** First real post-processing chain on top of the HDR target.
 
 **Deliverables.**
-- Multi-mip HDR Bloom through `BloomTechnique`: soft-knee bright
+- Multi-mip HDR Bloom through `BloomStage`: soft-knee bright
   extraction, filtered downsample chain, upsample-and-combine chain, and
   final contribution composited pre-tone-map.
 - Temporal Anti-Aliasing with a history buffer and jittered projection
@@ -231,7 +232,7 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 - Additional tone-map operators (Uncharted 2 filmic, AgX) selectable
   alongside ACES and Reinhard.
 
-**Depends on.** Phase 2.5 (HDR target, PostProcess pass).
+**Depends on.** Phase 2.5 (HDR target, PostProcess stage).
 
 **Independent of.** Phase 3.
 
@@ -245,7 +246,7 @@ shadow map as a flux+normal source for a low-frequency one-bounce
 indirect term.
 
 **Deliverables.**
-- ShadowPass extension or sibling pass that also writes flux and
+- ShadowStage extension or sibling stage that also writes flux and
   view-space normal to two extra render targets at shadow-map
   resolution.
 - A gather pass that samples N virtual point lights per fragment and
@@ -314,12 +315,12 @@ grid; otherwise needs a separate ray-tracing path).
 ### Ordering Rationale
 
 Phase 3 and Phase 4 are independent and order-flexible. Phase 5 (RSM)
-goes before Phase 6 (SSGI) because RSM extends an existing pass
-(ShadowPass) while SSGI extends an existing chain (PostProcess);
+goes before Phase 6 (SSGI) because RSM extends an existing stage
+(ShadowStage) while SSGI extends an existing chain (PostProcess);
 completing each one validates a single extension axis before introducing
 both at once. Phase 7 (VXGI) is placed after both indirect techniques
 because it introduces a new resource class (3D textures) unfamiliar to
-the existing passes. Phase 8 (DDGI) is last because its preferred
+the existing stages. Phase 8 (DDGI) is last because its preferred
 visibility source is the voxel grid built in Phase 7.
 
 ## Known Limitations

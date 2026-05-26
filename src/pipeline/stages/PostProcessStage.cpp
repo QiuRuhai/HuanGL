@@ -8,8 +8,6 @@
 #include "../../renderer/Renderer.h"
 #include "../../renderer/Framebuffer.h"
 #include "../../renderer/FrameContext.h"
-#include "../../renderer/Buffer.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace HuanGL {
 
