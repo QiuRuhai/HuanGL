@@ -186,7 +186,7 @@ void LightingStage::Execute(PipelineResources& resources, const FrameContext& fr
     brdfLUT_->Bind(6);
 
     pbrShader_->SetMat4("uView", frame.camera.view);
-    pbrShader_->SetMat4("uInvViewProj", glm::inverse(frame.camera.viewProj));
+    pbrShader_->SetMat4("uInvViewProj", frame.camera.invViewProj);
     pbrShader_->SetVec3("uCamPos", frame.camera.camPos);
     pbrShader_->SetFloat("uAmbientStrength", frame.renderSettings.ambientStrength);
 

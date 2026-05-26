@@ -233,7 +233,9 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
   final contribution composited pre-tone-map.
 - Temporal Anti-Aliasing through `TAAStage`: 8-sample Halton jitter,
   depth reprojection, RGBA16F history ping-pong, resize/scene-switch
-  invalidation, and 3x3 neighborhood history clamp.
+  invalidation, and 3x3 neighborhood history clamp. This first TAA pass
+  does not include motion vectors or velocity buffers, so disocclusion and
+  dynamic-object ghosting limits remain expected.
 - Tone-map modes: ACES, Reinhard, AgX, and None.
 
 **Depends on.** Phase 2.5 (HDR target, PostProcess stage).

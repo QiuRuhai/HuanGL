@@ -43,7 +43,7 @@ void PostProcessStage::Execute(PipelineResources& resources, const FrameContext&
     shader_->SetFloat("uExposure", frame.renderSettings.exposure);
 
     shader_->SetMat4("uView", frame.camera.view);
-    shader_->SetMat4("uInvViewProj", glm::inverse(frame.camera.viewProj));
+    shader_->SetMat4("uInvViewProj", frame.camera.invViewProj);
     shader_->SetFloat("uNearPlane", frame.camera.near_);
     shader_->SetFloat("uFarPlane", frame.camera.far_);
 
