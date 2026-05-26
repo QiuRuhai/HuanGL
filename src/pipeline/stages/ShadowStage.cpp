@@ -99,7 +99,7 @@ void ShadowStage::Execute(PipelineResources& resources, const FrameContext& fram
     const CameraData& camera = frame.camera;
     const DirectionalLight& light = scene.sunLight;
     auto splits = ComputeCascadeSplits(camera.near_, camera.far_);
-    auto invVP  = glm::inverse(camera.viewProj);
+    auto invVP  = glm::inverse(camera.unjitteredViewProj);
 
     Renderer::EnableCullFace(true);
     Renderer::EnableDepthTest(true);
