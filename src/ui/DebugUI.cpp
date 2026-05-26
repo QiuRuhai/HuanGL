@@ -30,9 +30,9 @@ void DebugUI::Draw(ApplicationState& state) {
     ImGui::Begin("HuanGL Debug");
 
     if (ImGui::CollapsingHeader("Render")) {
-        static const char* toneModes[] = { "ACES", "Reinhard", "None" };
+        static const char* toneModes[] = { "ACES", "Reinhard", "AgX", "None" };
         int toneMode = ToneMapIndex(state.renderSettings.toneMapMode);
-        if (ImGui::Combo("Tone Map", &toneMode, toneModes, 3)) {
+        if (ImGui::Combo("Tone Map", &toneMode, toneModes, 4)) {
             state.renderSettings.toneMapMode = ToneMapFromIndex(toneMode);
         }
 
@@ -50,6 +50,9 @@ void DebugUI::Draw(ApplicationState& state) {
     }
 
     if (ImGui::CollapsingHeader("Techniques")) {
+        ImGui::Checkbox("TAA", &state.renderSettings.taa.enabled);
+        ImGui::SliderFloat("TAA Feedback", &state.renderSettings.taa.feedback,
+                           0.0f, 0.98f, "%.2f");
         ImGui::Checkbox("Bloom", &state.renderSettings.bloom.enabled);
         ImGui::DragFloat("Bloom Threshold", &state.renderSettings.bloom.threshold,
                          0.05f, 0.0f, 20.0f);
