@@ -79,7 +79,7 @@ void App::Run() {
 
         Input::Update();
         window_->PollEvents();
-        inputController_.Update(state_);
+        inputController_.Update(state_, dt);
 
         Update(dt);
         Render(dt);

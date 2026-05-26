@@ -6,7 +6,7 @@ struct ApplicationState;
 
 class InputController {
 public:
-    void Update(ApplicationState& state);
+    void Update(ApplicationState& state, float deltaTime);
 
 private:
     bool wasCameraActive_ = false;

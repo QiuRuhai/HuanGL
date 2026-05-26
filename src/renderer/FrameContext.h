@@ -6,7 +6,8 @@ namespace HuanGL {
 enum class ToneMapMode {
     ACES = 0,
     Reinhard = 1,
-    None = 2,
+    AgX = 2,
+    None = 3,
 };
 
 enum class DebugView {
@@ -28,6 +29,11 @@ inline int ToShaderDebugView(DebugView view) {
     return static_cast<int>(view);
 }
 
+struct TAASettings {
+    bool enabled = true;
+    float feedback = 0.90f;
+};
+
 struct BloomSettings {
     bool enabled = true;
     float threshold = 1.0f;
@@ -42,10 +48,11 @@ struct RenderSettings {
     float ambientStrength = 1.0f;
     int shadowResolution = 2048;
     float exposure = 1.0f;
+    TAASettings taa;
     BloomSettings bloom;
 
     void CycleToneMap() {
-        int next = (ToShaderToneMapMode(toneMapMode) + 1) % 3;
+        int next = (ToShaderToneMapMode(toneMapMode) + 1) % 4;
         toneMapMode = static_cast<ToneMapMode>(next);
     }
 };

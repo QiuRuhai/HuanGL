@@ -5,7 +5,7 @@
 
 namespace HuanGL {
 
-void InputController::Update(ApplicationState& state) {
+void InputController::Update(ApplicationState& state, float deltaTime) {
     if (Input::IsKeyPressed(GLFW_KEY_ESCAPE)) {
         state.running = false;
     }
@@ -67,7 +67,7 @@ void InputController::Update(ApplicationState& state) {
         if (Input::IsKeyPressed(GLFW_KEY_D)) move.x += 1.f;
         if (Input::IsKeyPressed(GLFW_KEY_E)) move.y += 1.f;
         if (Input::IsKeyPressed(GLFW_KEY_Q)) move.y -= 1.f;
-        state.camera.Move(move, state.frameStats.deltaTime);
+        state.camera.Move(move, deltaTime);
     }
 }
 
