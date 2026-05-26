@@ -57,38 +57,40 @@ use the formats below:
 ```
 World → RenderSceneView + FrameContext
         │
-        ├─► ShadowPass     → ShadowOutputs
-        │                    sampler2DArrayShadow (2048² × 4 cascades, D32)
+        ├─► ShadowStage     → ShadowOutputs
+        │                      sampler2DArrayShadow (2048² × 4 cascades, D24)
         │
-        ├─► GBufferPass    → GBufferOutputs
-        │                    RT0 RGBA8   (albedo.rgb,  metallic.a)
-        │                    RT1 RGBA16F (normal.rgb,  roughness.a)
-        │                    Depth D24
+        ├─► GBufferStage    → GBufferOutputs
+        │                      RT0 RGBA8   (albedo.rgb,  metallic.a)
+        │                      RT1 RGBA16F (normal.rgb,  roughness.a)
+        │                      Depth D24
         │
-        └─► LightingPass   ← reads GBufferOutputs + ShadowOutputs + IBL
-             │               writes LightingOutputs (RGBA16F HDR target)
+        └─► LightingStage   ← reads GBufferOutputs + ShadowOutputs + IBL
+             │                 writes LightingOutputs (RGBA16F HDR target)
              ▼
-        BloomTechnique     → BloomOutputs
-             │               multi-mip HDR bloom texture (level 0 composite)
+        BloomStage          → BloomOutputs
+             │                 multi-mip HDR bloom texture (level 0 composite)
              ▼
-        PostProcessPass    ← reads Lighting/GBuffer/Shadow/Bloom outputs
-             │               composite + tone map + gamma + debug overlay
+        PostProcessStage    ← reads Lighting/GBuffer/Shadow/Bloom outputs
+             │                 composite + tone map + gamma + debug overlay
              ▼
         Backbuffer
 ```
 
-ShadowPass and GBufferPass are independent and could be reordered; the
+All stages implement `IPipelineStage` (Init/Resize/Execute/GetName) and
+live under `src/pipeline/stages/`. `RenderPipeline` iterates a
+`vector<unique_ptr<IPipelineStage>>` in fixed order; each stage reads
+upstream outputs and writes its own through a typed `PipelineResources`
+registry.
+
+ShadowStage and GBufferStage are independent and could be reordered; the
 current order matches frame-time profiling on typical scenes (shadow
-first because GBuffer's depth is unused by the lighting pass — it
+first because GBuffer's depth is unused by the lighting stage — it
 reconstructs world position from depth, not from a positions GBuffer).
 
 IBL textures (diffuse irradiance cubemap, prefiltered specular cubemap,
-BRDF LUT) are generated once in `LightingPass::Init` from an HDR
+BRDF LUT) are generated once in `LightingStage::Init` from an HDR
 equirectangular environment, and reused every frame.
-
-`PipelineOutputs` is the named handoff point for pass resources. The
-passes still own their textures and framebuffers; the output structs are
-lightweight handles for downstream passes and future debug tooling.
 
 ## Module Map
 
@@ -97,7 +99,7 @@ lightweight handles for downstream passes and future debug tooling.
 | `src/core/` | Window, input, app loop, camera | `App`, `Window`, `Input`, `Camera` |
 | `src/app/` | Runtime state, scene registry, input command mapping | `ApplicationState`, `SceneRegistry`, `InputController` |
 | `src/renderer/` | OpenGL RAII wrappers and shared schemas | `Shader`, `Buffer`, `Texture`, `Framebuffer`, `Material`, `Mesh` |
-| `src/pipeline/` | Render passes, concrete techniques, and per-frame orchestration | `RenderPipeline`, `ShadowPass`, `GBufferPass`, `LightingPass`, `PostProcessPass`, `BloomTechnique` |
+| `src/pipeline/` | IPipelineStage interface, typed resource registry, concrete stages, per-frame orchestration | `RenderPipeline`, `IPipelineStage`, `PipelineResources`, `ShadowStage`, `GBufferStage`, `LightingStage`, `BloomStage`, `PostProcessStage` |
 | `src/resource/` | Asset loading and caching | `ResourceManager`, `MeshLoader` |
 | `src/scene/` | Lightweight world/entities and demo scene builders | `World`, `Entity`, `TestScene`, `ModelScene` |
 | `src/ui/` | ImGui lifecycle and debug panels | `ImGuiLayer`, `DebugUI` |
@@ -136,11 +138,13 @@ radiance to an RGBA16F target; PostProcessPass applies the tone map and
 gamma. Keeps the HDR signal available for post-lighting techniques such
 as Bloom and TAA.
 
-**Concrete technique modules.** Optional algorithms such as Bloom, TAA,
-RSM, SSGI, VXGI, and DDGI live under `src/pipeline/techniques/`.
-They own their resources and expose typed output structs. `RenderPipeline`
-keeps the frame order explicit and does not become the owner of every
-algorithm's internal framebuffers.
+**Modular stage pipeline.** All render passes and optional algorithms
+implement `IPipelineStage` and live under `src/pipeline/stages/`. Each
+stage reads upstream outputs and writes its own output through a typed
+`PipelineResources` registry. `RenderPipeline` iterates a
+`vector<unique_ptr<IPipelineStage>>` — ordering is explicit, not
+graph-resolved. Adding a new technique means creating one stage file and
+registering it in `BuildStages`; no other files change.
 
 **UI edits state, passes read frame contracts.** ImGui controls mutate
 `ApplicationState` and the active `World`; render passes read
@@ -171,6 +175,7 @@ prevent the app from starting with the remaining registered scenes.
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 3.5 | ✅ Initial Complete | Concrete technique module boundary |
+| 3.6 | ✅ Complete | Modular pipeline architecture (IPipelineStage, PipelineResources) |
 | 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |

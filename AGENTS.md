@@ -61,7 +61,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - Reconstruct world position from depth and inverse view-proj in the lighting pass; do not write world position to a GBuffer attachment.
 - Use `sampler2DArrayShadow` for CSM and let the hardware perform the depth comparison; cascade selection uses view-space Z.
 - Tone mapping lives in `PostProcessPass`, not in the lighting shader. `LightingPass` writes raw HDR radiance to an RGBA16F target so future passes (Bloom, TAA) can read it.
-- Optional rendering algorithms live as concrete technique modules under `src/pipeline/techniques/`; do not add a full render graph or RHI.
+- All render passes and techniques implement `IPipelineStage` and live under `src/pipeline/stages/`. `RenderPipeline` iterates a vector of stages — ordering is explicit, not graph-resolved. Do not add a full render graph or RHI.
 - Re-orthogonalize the TBN basis in the fragment shader, not the vertex shader. Interpolation destroys vertex-side orthogonality.
 - Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
 - `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
@@ -91,10 +91,12 @@ The repository has been cleaned to a minimal HuanGL baseline:
 
 | File | Responsibility |
 |------|----------------|
-| `src/pipeline/RenderPipeline.h/cpp` | Pass orchestrator, owns Shadow/GBuffer/Lighting/PostProcess passes |
-| `src/pipeline/passes/ShadowPass.h/cpp` | Four-cascade CSM with `sampler2DArrayShadow` |
-| `src/pipeline/passes/GBufferPass.h/cpp` | Deferred MRT fill (RGBA8 albedo+metallic, RGBA16F normal+roughness, D24 depth) |
-| `src/pipeline/passes/LightingPass.h/cpp` | Cook-Torrance PBR + IBL (irradiance + prefilter + BRDF LUT) |
+| `src/pipeline/RenderPipeline.h/cpp` | Stage orchestrator, iterates `vector<unique_ptr<IPipelineStage>>` |
+| `src/pipeline/IPipelineStage.h` | Common stage interface (Init/Resize/Execute/GetName) |
+| `src/pipeline/PipelineResources.h` | Typed resource registry for inter-stage data passing |
+| `src/pipeline/stages/ShadowStage.h/cpp` | Four-cascade CSM with `sampler2DArrayShadow` |
+| `src/pipeline/stages/GBufferStage.h/cpp` | Deferred MRT fill (RGBA8 albedo+metallic, RGBA16F normal+roughness, D24 depth) |
+| `src/pipeline/stages/LightingStage.h/cpp` | Cook-Torrance PBR + IBL (irradiance + prefilter + BRDF LUT) |
 | `src/resource/ResourceManager.h/cpp` | `weak_ptr` texture and mesh cache with GC |
 | `src/resource/MeshLoader.h/cpp` | Assimp wrapper, returns `LoadResult { mesh, materials }` |
 | `src/scene/Scene.h` | Scene interface with mesh/material/light access |
@@ -109,7 +111,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 
 | File | Responsibility |
 |------|----------------|
-| `src/pipeline/passes/PostProcessPass.h/cpp` | Tone mapping, gamma, debug visualization |
+| `src/pipeline/stages/PostProcessStage.h/cpp` | Tone mapping, gamma, debug visualization |
 | `src/scene/ModelScene.h/cpp` | Loads a model via `MeshLoader`, adds optional floor |
 | `shader/postprocess/postprocess.frag` | ACES / Reinhard / linear tone map plus seven debug modes |
 | `src/renderer/Texture.h/cpp` | Adds `Load2DFromMemory` for `.glb` embedded textures |
@@ -128,7 +130,6 @@ The repository has been cleaned to a minimal HuanGL baseline:
 | `src/renderer/FrameContext.h` | Per-frame viewport, time, camera data, render settings, debug settings |
 | `src/renderer/RenderSceneView.h` | Read-only renderable view consumed by passes |
 | `src/pipeline/CascadeData.h` | Shared CSM cascade metadata |
-| `src/pipeline/PipelineOutputs.h` | Explicit pass output structs for future passes |
 | `src/ui/ImGuiLayer.h/cpp` | Dear ImGui context and GLFW/OpenGL3 backend wrapper |
 | `src/ui/DebugUI.h/cpp` | HuanGL Debug panel that edits state/world data |
 
@@ -136,7 +137,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 
 | File | Responsibility |
 |------|----------------|
-| `src/pipeline/techniques/BloomTechnique.h/cpp` | Multi-mip Bloom technique with soft-knee bright extract, downsample chain, and upsample combine |
+| `src/pipeline/stages/BloomStage.h/cpp` | Multi-mip Bloom stage with soft-knee bright extract, downsample chain, and upsample combine |
 | `shader/bloom/bright_extract.frag` | Soft-knee bright HDR radiance extraction for Bloom |
 | `shader/bloom/downsample.frag` | Filtered downsample pass for the Bloom mip chain |
 | `shader/bloom/upsample.frag` | Upsample-and-combine pass for reconstructing broad Bloom |
@@ -150,7 +151,7 @@ src/
   core/
   renderer/
   pipeline/
-    techniques/
+    stages/
   resource/
   scene/
   ui/
@@ -180,6 +181,7 @@ Empty future directories may be absent from Git until their implementation start
 | 2.5 | ✅ Complete | Pipeline polish (PostProcess, glTF materials, debug views) |
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 3.5 | ✅ Initial Complete | Concrete technique module boundary |
+| 3.6 | ✅ Complete | Modular pipeline architecture (IPipelineStage, PipelineResources) |
 | 4 | In Progress | Bloom, TAA, improved tone mapping |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
@@ -207,4 +209,6 @@ For phase deliverables, dependencies, and ordering rationale see
 - Architecture reset plan: `docs/superpowers/plans/2026-05-20-huangl-architecture-reset.md`
 - Rendering technique architecture plan: `docs/superpowers/plans/2026-05-20-huangl-technique-architecture.md`
 - Bloom polish plan: `docs/superpowers/plans/2026-05-20-huangl-bloom-polish.md`
+- Modular pipeline design: `docs/superpowers/specs/2026-05-26-huangl-modular-pipeline-design.md`
+- Modular pipeline plan: `docs/superpowers/plans/2026-05-26-huangl-modular-pipeline.md`
 - Architecture and roadmap: `docs/architecture.md`
