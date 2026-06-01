@@ -15,10 +15,12 @@ void main() {
     vec4 worldPos = model * vec4(aPos, 1.0);
     gl_Position   = viewProj * worldPos;
 
-    // Note: mat3(model) is only correct for orthogonal transforms (rotation +
-    // uniform scale). For non-uniform scale, transpose(inverse(mat3(model)))
-    // would be needed. Pre-existing limitation across the codebase.
-    mat3 normalMat = mat3(model);
+    // Normals transform by the inverse-transpose of the model matrix, which
+    // stays correct under non-uniform scale (plain mat3(model) skews normals
+    // when scale is anisotropic). Computed per-vertex here for learning
+    // clarity; production code precomputes a normalMatrix on the CPU and
+    // uploads it once per draw instead of inverting per vertex.
+    mat3 normalMat = transpose(inverse(mat3(model)));
 
     vWorldNormal = normalMat * aNormal;
     vWorldTangent = normalMat * aTangent;
