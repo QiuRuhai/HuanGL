@@ -181,7 +181,9 @@ prevent the app from starting with the remaining registered scenes.
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 3.5 | ✅ Initial Complete | Concrete technique module boundary |
 | 3.6 | ✅ Complete | Modular pipeline architecture (IPipelineStage, PipelineResources) |
-| 4 | In Progress | Bloom, TAA, improved tone mapping |
+| 4 | ✅ Complete | Bloom, TAA, improved tone mapping |
+| 4.5 | In Progress | GI foundations: correctness fixes + per-stage GPU profiling |
+| 4.6 | Planned | Scalability + showcase: frustum culling, draw batching, showcase scene |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |
@@ -245,6 +247,45 @@ asset browsing, and ImGuizmo until the rendering roadmap needs them.
 **Risk.** TAA history invalidation on scene swap or window resize.
 Mitigation: clear the history buffer on resize and when the active scene
 changes through keyboard or DebugUI controls.
+
+### Phase 4.5 — GI Foundations
+
+**Goal.** Close the correctness and measurement gaps every GI technique
+depends on, before adding indirect lighting.
+
+**Deliverables.**
+- `GpuProfiler` (`src/renderer/GpuProfiler.h/cpp`): per-stage GPU timing via
+  ring-buffered `GL_TIMESTAMP` queries, surfaced in the DebugUI "GPU Timing"
+  table. Enables the A/B technique comparison the project is built around.
+- Correct normal matrix (`transpose(inverse(mat3(model)))`) in the GBuffer
+  vertex shader, fixing lighting under non-uniform scale.
+- sRGB-aware texture cache: `ResourceManager::LoadTexture(path, sRGB)` keyed
+  by `(path, sRGB)`, with `MeshLoader` routed through it so shared linear
+  textures load once.
+
+**Depends on.** Phase 3.6 (stage pipeline — the profiler brackets stages).
+
+**Out of scope.** Motion vectors / velocity buffer: all scenes are static, so
+TAA's existing depth-reprojection is already correct; a velocity buffer is
+deferred until animated content exists.
+
+**Risk.** Low. Main pitfall is a profiler ring-buffer off-by-one stalling the
+GPU; mitigated by only reading slots that are `kFrameDepth` frames old.
+
+### Phase 4.6 — Scalability and Showcase
+
+**Goal.** Make the renderer scale to large scenes and ship a portfolio-quality
+demonstration scene before the heavier GI techniques land.
+
+**Deliverables.**
+- Frustum culling (AABB accumulation in `Mesh`, per-pass cull).
+- Draw batching to reduce per-sub-mesh `glDrawElements` overhead.
+- A committed showcase scene and a clear asset-loading story.
+
+**Depends on.** Phase 4.5.
+
+**Risk.** Culling correctness across shadow cascades (each cascade has its own
+frustum); validate per-cascade before trusting the cull.
 
 ### Phase 5 — Reflective Shadow Maps (RSM)
 
@@ -336,33 +377,22 @@ The list below tracks correctness and performance issues that are known
 today but deferred. Each entry lists what is wrong, the impact, and an
 estimated fix cost.
 
-1. **`mat3(model)` used as normal matrix in `gbuffer.vert`.** Incorrect
-   for non-uniform scaling. *Impact:* distorted lighting on non-uniformly
-   scaled models. *Fix cost:* low (compute and upload the
-   inverse-transpose, or compute in shader).
-
-2. **`Vertex::tangent` is `vec3`, missing glTF tangent handedness (`w`).**
+1. **`Vertex::tangent` is `vec3`, missing glTF tangent handedness (`w`).**
    The fragment shader recomputes the bitangent via `cross(N, T)`,
    correct up to sign but may be flipped on mirrored UV regions.
    *Impact:* localized normal-mapping inversion on mirrored geometry.
    *Fix cost:* medium (schema change, mesh loader change, vertex layout,
    shader change).
 
-3. **No frustum culling.** Every registered mesh is drawn each pass.
+2. **No frustum culling.** Every registered mesh is drawn each pass.
    *Impact:* purely performance — fine at current scales, will become
    limiting in Sponza-scale assets at higher cascades. *Fix cost:*
-   medium (AABB accumulation in `Mesh`, plus per-pass cull).
+   medium (AABB accumulation in `Mesh`, plus per-pass cull). *Scheduled for Phase 4.6.*
 
-4. **No mesh batching.** Each sub-mesh issues its own `glDrawElements`.
-   *Impact:* CPU overhead with many sub-meshes. *Fix cost:* medium.
+3. **No mesh batching.** Each sub-mesh issues its own `glDrawElements`.
+   *Impact:* CPU overhead with many sub-meshes. *Fix cost:* medium. *Scheduled for Phase 4.6.*
 
-5. **`ResourceManager` always loads textures as sRGB.** Linear textures
-   (normal, roughness, metallic) bypass the cache via direct
-   `Texture::Load2D` calls. *Impact:* duplicate texture loads when a
-   non-sRGB texture is shared between materials. *Fix cost:* low
-   (extend cache key to include the sRGB flag).
-
-6. **PostProcess pass leaves backbuffer depth state unspecified.** The
+4. **PostProcess pass leaves backbuffer depth state unspecified.** The
    pass clears via `Framebuffer::BindDefault` then renders a fullscreen
    triangle; no explicit handling of the depth buffer if a future pass
    needs to read it post-tone-map. *Impact:* none today; latent. *Fix

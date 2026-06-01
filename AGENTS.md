@@ -62,6 +62,7 @@ The repository has been cleaned to a minimal HuanGL baseline:
 - Use `sampler2DArrayShadow` for CSM and let the hardware perform the depth comparison; cascade selection uses view-space Z.
 - Tone mapping lives in `PostProcessStage`, not in the lighting shader. `LightingStage` writes raw HDR radiance to an RGBA16F target so future stages (Bloom, TAA) can read it.
 - All render passes and techniques implement `IPipelineStage` and live under `src/pipeline/stages/`. `RenderPipeline` iterates a vector of stages — ordering is explicit, not graph-resolved. Do not add a full render graph or RHI.
+- This is a learning project: comments that explain WHY a technique works or the reasoning behind an algorithm are an asset. Prefer clear teaching comments over terse minimalism. (This supersedes any earlier implicit "minimal comments" assumption.)
 - Re-orthogonalize the TBN basis in the fragment shader, not the vertex shader. Interpolation destroys vertex-side orthogonality.
 - Treat Assimp texture paths starting with `*` as indices into `aiScene::mTextures` and decode the embedded bytes via `Texture::Load2DFromMemory`. This is the only correct way to load textures from `.glb`.
 - `Material::packedMetallicRoughness` flag signals the glTF convention (G = roughness, B = metallic) so the shader samples the right channels.
@@ -184,7 +185,9 @@ Empty future directories may be absent from Git until their implementation start
 | 3 | ✅ Minimum Complete | Application state, lightweight World, ImGui debug UI |
 | 3.5 | ✅ Initial Complete | Concrete technique module boundary |
 | 3.6 | ✅ Complete | Modular pipeline architecture (IPipelineStage, PipelineResources) |
-| 4 | In Progress | Bloom, TAA, improved tone mapping |
+| 4 | ✅ Complete | Bloom, TAA, improved tone mapping |
+| 4.5 | In Progress | GI foundations: correctness fixes + per-stage GPU profiling |
+| 4.6 | Planned | Scalability + showcase: culling, batching, showcase scene |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |
@@ -213,4 +216,6 @@ For phase deliverables, dependencies, and ordering rationale see
 - Bloom polish plan: `docs/superpowers/plans/2026-05-20-huangl-bloom-polish.md`
 - Modular pipeline design: `docs/superpowers/specs/2026-05-26-huangl-modular-pipeline-design.md`
 - Modular pipeline plan: `docs/superpowers/plans/2026-05-26-huangl-modular-pipeline.md`
+- GI foundations design: `docs/superpowers/specs/2026-06-01-huangl-gi-foundations-design.md`
+- GI foundations plan: `docs/superpowers/plans/2026-06-01-huangl-gi-foundations.md`
 - Architecture and roadmap: `docs/architecture.md`
