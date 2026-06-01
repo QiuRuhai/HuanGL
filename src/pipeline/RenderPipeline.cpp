@@ -60,11 +60,15 @@ void RenderPipeline::Execute(const RenderSceneView& scene,
     resources_.Set(scene);
     UpdateUniformBuffers(scene, frame);
 
+    profiler_.BeginFrame();
     for (auto& stage : stages_) {
         Renderer::PushDebugGroup(stage->GetName());
+        profiler_.BeginStage(stage->GetName());
         stage->Execute(resources_, frame);
+        profiler_.EndStage();
         Renderer::PopDebugGroup();
     }
+    profiler_.EndFrame();
 }
 
 } // namespace HuanGL

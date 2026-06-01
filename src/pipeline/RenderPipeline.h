@@ -4,6 +4,7 @@
 #include "../renderer/FrameContext.h"
 #include "../renderer/RenderSceneView.h"
 #include "../renderer/UniformBuffer.h"
+#include "../renderer/GpuProfiler.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,6 +18,11 @@ public:
     void InvalidateHistory();
     void Execute(const RenderSceneView& scene, const FrameContext& frame);
 
+    // Per-stage GPU timings from the most recently resolved frame.
+    const std::vector<StageTiming>& GetStageTimings() const {
+        return profiler_.GetResults();
+    }
+
 private:
     void BuildStages(const std::string& hdrPath);
     void UpdateUniformBuffers(const RenderSceneView& scene, const FrameContext& frame);
@@ -27,6 +33,8 @@ private:
     std::unique_ptr<CameraUBO> cameraUBO_;
     std::unique_ptr<LightsUBO> lightsUBO_;
     std::unique_ptr<TimeUBO>   timeUBO_;
+
+    GpuProfiler profiler_;
 };
 
 } // namespace HuanGL
