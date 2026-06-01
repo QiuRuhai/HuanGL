@@ -2,6 +2,8 @@
 #include "SceneRegistry.h"
 #include "../core/Camera.h"
 #include "../renderer/FrameContext.h"
+#include "../renderer/GpuProfiler.h"
+#include <vector>
 
 namespace HuanGL {
 
@@ -19,6 +21,7 @@ struct ApplicationState {
     RenderSettings renderSettings;
     DebugSettings debugSettings;
     FrameStats frameStats;
+    std::vector<StageTiming> stageTimings;
 };
 
 } // namespace HuanGL

@@ -199,6 +199,7 @@ void App::Render(float dt) {
     Renderer::Clear();
 
     pipeline_->Execute(sceneView, frame);
+    state_.stageTimings = pipeline_->GetStageTimings();
     StorePreviousCameraState(frame.camera);
 }
 

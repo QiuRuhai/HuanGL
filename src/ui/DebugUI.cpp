@@ -116,6 +116,34 @@ void DebugUI::Draw(ApplicationState& state) {
         ImGui::Text("Frame: %.2f ms", state.frameStats.frameTimeMs);
     }
 
+    if (ImGui::CollapsingHeader("GPU Timing")) {
+        if (state.stageTimings.empty()) {
+            ImGui::TextDisabled("measuring...");
+        } else {
+            double total = 0.0;
+            if (ImGui::BeginTable("gpu_timing", 2,
+                                  ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Stage");
+                ImGui::TableSetupColumn("ms");
+                ImGui::TableHeadersRow();
+                for (const auto& t : state.stageTimings) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(t.name.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%.3f", t.ms);
+                    total += t.ms;
+                }
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Total GPU");
+                ImGui::TableNextColumn();
+                ImGui::Text("%.3f", total);
+                ImGui::EndTable();
+            }
+        }
+    }
+
     ImGui::End();
 }
 
