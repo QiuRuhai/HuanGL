@@ -1,6 +1,7 @@
 #include "MeshLoader.h"
 #include "../renderer/Buffer.h"
 #include "../renderer/Texture.h"
+#include "ResourceManager.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -52,9 +53,10 @@ static std::shared_ptr<Texture> LoadMaterialTexture(const aiScene* scene,
             "[MeshLoader] Uncompressed embedded texture not supported yet");
     }
 
-    // External file on disk.
+    // External file on disk — go through the cache so a texture shared by
+    // several materials (common in Sponza) is loaded only once per sRGB mode.
     std::string resolved = ResolvePath(modelDir, path);
-    return Texture::Load2D(resolved, sRGB);
+    return ResourceManager::LoadTexture(resolved, sRGB);
 }
 
 LoadResult MeshLoader::Load(const std::string& path) {

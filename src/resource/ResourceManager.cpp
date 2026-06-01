@@ -16,15 +16,15 @@ void ResourceManager::GC() {
     }
 }
 
-template<>
-std::shared_ptr<Texture> ResourceManager::Load<Texture>(const std::string& path) {
-    std::string key = MakeKey<Texture>(path);
+std::shared_ptr<Texture> ResourceManager::LoadTexture(const std::string& path,
+                                                      bool sRGB) {
+    std::string key = "Texture|" + path + (sRGB ? "|srgb" : "|linear");
     auto it = cache_.find(key);
     if (it != cache_.end()) {
         if (auto p = it->second.ptr.lock())
             return std::static_pointer_cast<Texture>(p);
     }
-    auto tex = Texture::Load2D(path, true);
+    auto tex = Texture::Load2D(path, sRGB);
     cache_[key] = {tex};
     return tex;
 }
