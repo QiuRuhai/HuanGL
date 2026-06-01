@@ -32,7 +32,7 @@ public:
     const std::vector<StageTiming>& GetResults() const { return results_; }
 
 private:
-    static constexpr int kFrameDepth = 3;
+    static constexpr unsigned int kFrameDepth = 3;
 
     struct StageQuery {
         std::string name;
