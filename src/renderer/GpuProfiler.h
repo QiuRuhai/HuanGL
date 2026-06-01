@@ -44,11 +44,13 @@ private:
         bool pending = false;
     };
 
-    void Resolve(FrameSlot& slot);
+    void Resolve(const FrameSlot& slot);
 
     FrameSlot frames_[kFrameDepth];
     FrameSlot* current_ = nullptr;
-    int frameCount_ = 0;
+    // Unsigned so the frameCount_ % kFrameDepth wrap is well-defined on
+    // overflow (signed overflow would be UB after very long runtimes).
+    unsigned int frameCount_ = 0;
     int stageCursor_ = 0;
     std::vector<StageTiming> results_;
 };

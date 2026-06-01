@@ -49,7 +49,7 @@ void GpuProfiler::EndFrame() {
     ++frameCount_;
 }
 
-void GpuProfiler::Resolve(FrameSlot& slot) {
+void GpuProfiler::Resolve(const FrameSlot& slot) {
     results_.clear();
     results_.reserve(slot.stages.size());
     for (auto& s : slot.stages) {
