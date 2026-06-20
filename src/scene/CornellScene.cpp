@@ -2,7 +2,6 @@
 #include "PrimitiveMesh.h"
 #include "../resource/ResourceManager.h"
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
 
 namespace HuanGL {
 
@@ -94,19 +93,23 @@ void CornellScene::Init(ResourceManager& /*rm*/) {
     const std::vector<uint32_t> idx = { 0, 1, 2, 0, 2, 3 };
 
     // Floor (y=0): normal {0,+1,0} pointing up into the room. CCW from above.
+    // Winding: (-5,0,5)->(5,0,5)->(5,0,-5)->(-5,0,-5) so that
+    // (p1-p0)x(p2-p0) = (10,0,0)x(10,0,-10) = (0,+100,-100), +Y confirmed.
     {
         auto& e = world_.CreateEntity("Floor");
-        auto v = MakeQuad({-5, 0, -5}, { 5, 0, -5},
-                          { 5, 0,  5}, {-5, 0,  5},
+        auto v = MakeQuad({-5, 0,  5}, { 5, 0,  5},
+                          { 5, 0, -5}, {-5, 0, -5},
                           {0, 1, 0});
         e.meshRenderer = MeshRenderer{ BuildMesh(v, idx, 0) };
     }
 
     // Ceiling (y=10): normal {0,-1,0} pointing down into the room. CCW from below.
+    // Winding: (-5,10,-5)->(5,10,-5)->(5,10,5)->(-5,10,5) so that
+    // (p1-p0)x(p2-p0) = (10,0,0)x(10,0,+10) = (0,-100,+100), -Y confirmed.
     {
         auto& e = world_.CreateEntity("Ceiling");
-        auto v = MakeQuad({-5, 10,  5}, { 5, 10,  5},
-                          { 5, 10, -5}, {-5, 10, -5},
+        auto v = MakeQuad({-5, 10, -5}, { 5, 10, -5},
+                          { 5, 10,  5}, {-5, 10,  5},
                           {0, -1, 0});
         e.meshRenderer = MeshRenderer{ BuildMesh(v, idx, 0) };
     }
