@@ -3,6 +3,7 @@
 #include "../core/Camera.h"
 #include "../renderer/FrameContext.h"
 #include "../renderer/GpuProfiler.h"
+#include "../pipeline/ComparisonReadout.h"
 #include <vector>
 
 namespace HuanGL {
@@ -22,6 +23,7 @@ struct ApplicationState {
     DebugSettings debugSettings;
     FrameStats frameStats;
     std::vector<StageTiming> stageTimings;
+    ComparisonReadout comparisonReadout; // populated from RenderPipeline each frame
 };
 
 } // namespace HuanGL

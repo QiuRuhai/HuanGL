@@ -203,6 +203,7 @@ void App::Render(float dt) {
 
     pipeline_->Execute(sceneView, frame);
     state_.stageTimings = pipeline_->GetStageTimings();
+    state_.comparisonReadout = pipeline_->GetComparisonReadout();
     StorePreviousCameraState(frame.camera);
 }
 

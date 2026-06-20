@@ -111,6 +111,26 @@ void DebugUI::Draw(ApplicationState& state) {
         }
     }
 
+    if (ImGui::CollapsingHeader("GI Comparison")) {
+        auto& rs = state.renderSettings;
+        auto& ds = state.debugSettings;
+        ImGui::Checkbox("Path tracer (reference)", &rs.pathTracerEnabled);
+        ImGui::SliderInt("SPP / frame", &rs.pathTracerSpp, 1, 8);
+        ImGui::SliderInt("Max bounces", &rs.pathTracerMaxBounces, 1, 8);
+        const char* views[] = {"Realtime","Reference","Split","Error heatmap"};
+        int v = (int)ds.compareView;
+        if (ImGui::Combo("View", &v, views, 4)) ds.compareView = (DebugSettings::CompareView)v;
+        ImGui::SliderFloat("Error scale", &ds.errorScale, 0.01f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+        const auto& r = state.comparisonReadout;
+        if (r.valid) {
+            ImGui::Text("Samples: %u", r.sampleCount);
+            ImGui::Text("RMSE: %.5f", r.rmse);
+            ImGui::Text("MAPE: %.2f%%", r.mape * 100.0);
+        } else {
+            ImGui::TextDisabled("enable path tracer to measure");
+        }
+    }
+
     if (ImGui::CollapsingHeader("Stats")) {
         ImGui::Text("FPS: %.1f", state.frameStats.fps);
         ImGui::Text("Frame: %.2f ms", state.frameStats.frameTimeMs);
