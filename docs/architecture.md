@@ -184,6 +184,7 @@ prevent the app from starting with the remaining registered scenes.
 | 4 | ✅ Complete | Bloom, TAA, improved tone mapping |
 | 4.5 | In Progress | GI foundations: correctness fixes + per-stage GPU profiling |
 | 4.6 | Planned | Scalability + showcase: frustum culling, draw batching, showcase scene |
+| 4.7 | ✅ Complete | GI Evaluation Framework: reference path tracer, error metrics, comparison harness |
 | 5 | Planned | RSM |
 | 6 | Planned | SSGI |
 | 7 | Planned | VXGI |
@@ -287,6 +288,37 @@ demonstration scene before the heavier GI techniques land.
 **Risk.** Culling correctness across shadow cascades (each cascade has its own
 frustum); validate per-cascade before trusting the cull.
 
+### Phase 4.7 — GI Evaluation Framework
+
+**Goal.** Provide an in-engine ground-truth reference so that every GI
+technique added in Phases 5–8 can be validated quantitatively against a
+known-correct result, rather than only against other approximations.
+Design spec: `docs/superpowers/specs/2026-06-20-huangl-gi-evaluation-framework-design.md`.
+
+**Deliverables.**
+- `PathTracerStage` / `PathTracerScene` / `Bvh`: a compute-shader path tracer
+  accumulating diffuse multi-bounce indirect illumination with sun NEE and
+  equirectangular environment sampling, backed by a CPU-built BVH over
+  world-space scene triangles (GpuNode / GpuTri / GpuMaterial SSBOs).
+- `ErrorMetricsStage`: per-pixel RMSE and MAPE computed on the GPU,
+  with a readable `ComparisonReadout` (rmse, mape, sampleCount).
+- `ComparisonStage` + `ComparisonUI`: four view modes (Realtime, Reference,
+  Split, ErrorHeatmap) selectable from the DebugUI, with heatmap sensitivity
+  control.
+- A Cornell Box validation scene (`CornellScene`) that isolates diffuse
+  multi-bounce behaviour, a white-furnace test (uniform environment + no sun),
+  and an energy-conservation check.
+- Camera-freeze mode (`DebugSettings::freezeCamera`) to let the reference
+  converge without resetting the accumulation buffer.
+
+**Depends on.** Phase 4.5 (GpuProfiler for PathTracer/ComparisonStage GPU
+timing rows); Phase 3.6 (IPipelineStage, PipelineResources).
+
+**Risk.** The reference is diffuse-only in v1; glossy and metallic surfaces
+in non-Cornell scenes will not converge to the real ground truth — acceptable
+and documented. Validation scenes should use diffuse-only materials until a
+specular BRDF is added to the path tracer.
+
 ### Phase 5 — Reflective Shadow Maps (RSM)
 
 **Goal.** First indirect-lighting technique. Treats the directional
@@ -301,7 +333,9 @@ indirect term.
   accumulates indirect irradiance.
 - Optional importance sampling and screen-space denoise.
 
-**Depends on.** Phase 4 (TAA helps mask sample noise).
+**Depends on.** Phase 4 (TAA helps mask sample noise); Phase 4.7
+(GI Evaluation Framework — RSM indirect output is validated against the
+reference path tracer rather than only against visual inspection).
 
 **Risk.** Sample budget: 64–256 VPLs per fragment can be expensive at
 shadow-map resolutions of 2048².
@@ -318,7 +352,9 @@ up with both for A/B comparison.
   HDR target.
 - Temporal accumulation reusing the Phase 4 history infrastructure.
 
-**Depends on.** Phase 4 (PostProcess chain, TAA history).
+**Depends on.** Phase 4 (PostProcess chain, TAA history); Phase 4.7
+(GI Evaluation Framework — SSGI indirect term is validated against the
+reference path tracer).
 
 **Independent of.** Phase 5.
 
@@ -356,7 +392,9 @@ conservative rasterization is GPU-specific.
 - Probe relighting and sample blending into the lighting pass.
 
 **Depends on.** Phase 7 (visibility tracing benefits from the voxel
-grid; otherwise needs a separate ray-tracing path).
+grid; otherwise needs a separate ray-tracing path); Phase 4.7
+(GI Evaluation Framework — DDGI probe irradiance is validated against
+the reference path tracer).
 
 **Risk.** Probe placement strategy and update budget.
 

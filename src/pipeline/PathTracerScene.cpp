@@ -146,10 +146,6 @@ void PathTracerScene::Build(const RenderSceneView& scene) {
     matBuffer_->Upload(gpuMaterials.data(), gpuMaterials.size() * sizeof(GpuMaterial));
 
     ready_ = true;
-
-    // Temporary verification hook — removed in Task 9 cleanup.
-    std::printf("PathTracerScene: %zu nodes, %u tris, %zu materials\n",
-                gpuNodes.size(), TriangleCount(), gpuMaterials.size());
 }
 
 void PathTracerScene::BindSSBOs() const {

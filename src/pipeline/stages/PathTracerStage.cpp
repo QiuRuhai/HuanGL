@@ -3,7 +3,6 @@
 #include "../../renderer/FrameContext.h"
 #include "../../renderer/RenderSceneView.h"
 #include <glm/gtc/matrix_inverse.hpp>
-#include <cstdio>
 
 namespace HuanGL {
 
@@ -87,9 +86,6 @@ void PathTracerStage::Execute(PipelineResources& resources, const FrameContext& 
     shader_->Dispatch((width_ + 7) / 8, (height_ + 7) / 8);
 
     ++sampleCount_;
-
-    // Temporary verification hook — removed in Task 9.
-    std::printf("[PT] spp=%u\n", sampleCount_);
 
     // Publish reference outputs; consumers divide hdr by sampleCount to get the mean.
     ReferenceOutputs out;
