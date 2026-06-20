@@ -388,11 +388,12 @@ struct GpuMaterial {
 - [ ] **Step 2: Implement `Build`**
 
 `PathTracerScene.cpp`:
-1. For each `Renderable` with `renderable.mesh->cpuGeometry`, read its `vertices`/`indices`, and for each sub-mesh walk index triples. Transform position by `modelMatrix`, transform normal by `mat3(transpose(inverse(modelMatrix)))` (teaching comment: inverse-transpose for normals under non-uniform scale — same reason as the GBuffer normal matrix). Emit a `BvhTri` with `materialIndex` = the sub-mesh's `materialIndex` **plus a per-renderable material base offset** (concatenate all renderables' materials into one global material array; track the running offset).
-2. If no triangles were gathered, set a `ready_ = false` flag and return (log a warning: `"PathTracerScene: active scene has no CPU geometry; reference unavailable"`).
-3. `bvh_.Build(std::move(tris))`.
-4. Pack `bvh_.Nodes()` → `GpuNode[]`, `bvh_.Tris()` → `GpuTri[]`, the concatenated materials → `GpuMaterial[]`.
-5. Upload each into a `Buffer(GL_SHADER_STORAGE_BUFFER)`; store the three buffers as members. `BindSSBOs()` calls `buf.BindBase(kNodeBinding)` etc.
+1. **Build the global material array first, deduplicated by pointer.** Every `Renderable` in a `World` shares the same `materials` pointer (`World::BuildRenderSceneView` sets `renderable.materials = &materials_` for all), so naive per-renderable concatenation would duplicate the same list once per entity. Instead keep a `std::unordered_map<const std::vector<Material>*, uint32_t> matBase;` — the first time a `materials` pointer is seen, append all its `Material`s (converted to `GpuMaterial`) to the global array and record the starting index as its base; on later sightings reuse the recorded base. This is correct whether renderables share one list (Cornell/TestScene) or carry distinct lists.
+2. For each `Renderable` with `renderable.mesh->cpuGeometry`, read its `vertices`/`indices`, and for each sub-mesh walk index triples over `[indexOffset, indexOffset+indexCount)`. Transform position by `modelMatrix`, transform normal by `mat3(transpose(inverse(modelMatrix)))` (teaching comment: inverse-transpose for normals under non-uniform scale — same reason as the GBuffer normal matrix). Emit a `BvhTri` whose `materialIndex` = `matBase[renderable.materials] + subMesh.materialIndex` (the global index into the dedup'd material array).
+3. If no triangles were gathered, set a `ready_ = false` flag and return (log a warning: `"PathTracerScene: active scene has no CPU geometry; reference unavailable"`).
+4. `bvh_.Build(std::move(tris))`.
+5. Pack `bvh_.Nodes()` → `GpuNode[]`, `bvh_.Tris()` → `GpuTri[]`, the global material array → `GpuMaterial[]`.
+6. Upload each into a `Buffer(GL_SHADER_STORAGE_BUFFER)`; store the three buffers as members. `BindSSBOs()` calls `buf.BindBase(kNodeBinding)` etc.
 
 Use `std::make_unique<Buffer>(GL_SHADER_STORAGE_BUFFER)` and `Upload(data, bytes)`.
 
