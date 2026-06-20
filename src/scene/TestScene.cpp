@@ -1,6 +1,6 @@
 #include "TestScene.h"
+#include "PrimitiveMesh.h"
 #include "../resource/ResourceManager.h"
-#include "../renderer/Buffer.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
@@ -31,32 +31,6 @@ static std::vector<uint32_t> GenSphereIdx(int stacks, int slices) {
             idx.insert(idx.end(), {a, b, a + 1, b, b + 1, a + 1});
         }
     return idx;
-}
-
-static std::shared_ptr<Mesh> BuildMesh(const std::vector<Vertex>& verts,
-                                        const std::vector<uint32_t>& idx,
-                                        uint32_t matIdx) {
-    auto m = std::make_shared<Mesh>();
-    m->vao = std::make_shared<VertexArray>();
-    m->vbo = std::make_shared<Buffer>(GL_ARRAY_BUFFER);
-    m->ebo = std::make_shared<Buffer>(GL_ELEMENT_ARRAY_BUFFER);
-    m->vbo->Upload(verts.data(), verts.size() * sizeof(Vertex));
-    m->ebo->Upload(idx.data(), idx.size() * sizeof(uint32_t));
-    constexpr GLsizei s = sizeof(Vertex);
-    m->vao->Bind();
-    m->vbo->Bind();
-    m->ebo->Bind();
-    m->vao->BindVertexBuffer(0, m->vbo->GetID(), s, 0);
-    m->vao->AddAttribute(0, 3, GL_FLOAT, GL_FALSE, s, offsetof(Vertex, position));
-    m->vao->AddAttribute(1, 3, GL_FLOAT, GL_FALSE, s, offsetof(Vertex, normal));
-    m->vao->AddAttribute(2, 2, GL_FLOAT, GL_FALSE, s, offsetof(Vertex, texCoord));
-    m->vao->AddAttribute(3, 3, GL_FLOAT, GL_FALSE, s, offsetof(Vertex, tangent));
-    m->vao->Unbind();
-    SubMesh sub;
-    sub.indexCount = (uint32_t)idx.size();
-    sub.materialIndex = matIdx;
-    m->subMeshes.push_back(sub);
-    return m;
 }
 
 void TestScene::Init(ResourceManager& /*rm*/) {
