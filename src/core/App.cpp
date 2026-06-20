@@ -6,6 +6,7 @@
 #include "../renderer/Shader.h"
 #include "../scene/Scene.h"
 #include "../scene/TestScene.h"
+#include "../scene/CornellScene.h"
 #include "../scene/ModelScene.h"
 #include "../resource/ResourceManager.h"
 #include "../ui/DebugUI.h"
@@ -37,6 +38,8 @@ App::~App() { Shutdown(); }
 void App::RegisterScenes() {
     state_.sceneRegistry.RegisterRequired(
         std::make_unique<TestScene>(), "TestScene", *resourceManager_);
+    state_.sceneRegistry.RegisterRequired(
+        std::make_unique<CornellScene>(), "Cornell", *resourceManager_);
 
     const char* helmetPath = "../resources/models/DamagedHelmet.glb";
     std::printf("[App] Attempting DamagedHelmet from '%s' (exists=%d)\n",
