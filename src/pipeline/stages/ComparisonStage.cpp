@@ -43,11 +43,14 @@ void ComparisonStage::Execute(PipelineResources& resources, const FrameContext& 
 
     const auto& ref = resources.Get<ReferenceOutputs>();
 
-    // Resolve realtime HDR: prefer TAA-resolved output, fall back to raw lighting.
+    // Resolve realtime HDR: prefer the TAA-resolved output, fall back to raw
+    // lighting. Guard on the POINTER, not Has<TAAOutputs>(): TAAStage always
+    // publishes a TAAOutputs, but its resolvedHdr is null when TAA is disabled,
+    // so Has<>() is true yet the texture is null. Mirrors PostProcessStage.
+    const auto& taa = resources.Get<TAAOutputs>();
+    const auto& lighting = resources.Get<LightingOutputs>();
     const std::shared_ptr<Texture>& realtime =
-        resources.Has<TAAOutputs>()
-            ? resources.Get<TAAOutputs>().resolvedHdr
-            : resources.Get<LightingOutputs>().hdrColor;
+        taa.resolvedHdr ? taa.resolvedHdr : lighting.hdrColor;
 
     const float invSampleCount = 1.0f / static_cast<float>(std::max(ref.sampleCount, 1u));
 
