@@ -746,7 +746,7 @@ public:
 
 - [ ] **Step 1: Error compute shader**
 
-`shader/comparison/error.comp` — reads realtime + reference (mean), writes a per-pixel error texture (rgb = abs diff for heatmap, a = squared luminance error for reduction):
+`shader/comparison/error.comp` — reads realtime + reference (mean) and writes a per-pixel error texture whose channels pack the three quantities the readback needs: **r = absolute luminance error** (used by the heatmap), **g = squared luminance error** (reduced to RMSE), **b = relative luminance error** `|a-b|/(|b|+eps)` (reduced to MAPE). One readback then yields both metrics plus the heatmap source.
 
 ```glsl
 #version 460 core
@@ -764,9 +764,11 @@ void main(){
     if(px.x>=int(uResolution.x)||px.y>=int(uResolution.y)) return;
     vec3 a = texelFetch(uRealtime, px, 0).rgb;
     vec3 b = texelFetch(uReference, px, 0).rgb * uInvSampleCount;
-    vec3 d = abs(a-b);
-    float se = (luma(a)-luma(b)); se*=se;
-    imageStore(uError, px, vec4(d, se));
+    float la = luma(a), lb = luma(b);
+    float absErr = abs(la - lb);
+    float sqErr  = absErr * absErr;
+    float relErr = absErr / (abs(lb) + 1e-3);  // MAPE term, eps-guarded
+    imageStore(uError, px, vec4(absErr, sqErr, relErr, 1.0));
 }
 ```
 
@@ -779,7 +781,7 @@ void main(){
 out vec4 FragColor;
 uniform sampler2D uRealtime;   // resolved HDR
 uniform sampler2D uReference;  // accumulation sum
-uniform sampler2D uError;      // abs diff in rgb
+uniform sampler2D uError;      // r=abs luma err, g=sq err, b=rel err
 uniform vec2  uResolution;
 uniform float uInvSampleCount;
 uniform int   uView;           // 0 realtime,1 reference,2 split,3 heatmap
@@ -799,23 +801,24 @@ void main(){
     if(uView==0) outc=tonemap(rt);
     else if(uView==1) outc=tonemap(rf);
     else if(uView==2) outc=(uv.x<0.5)?tonemap(rt):tonemap(rf);
-    else { float e=length(texelFetch(uError,px,0).rgb)*uErrorScale; outc=heat(e); }
+    else { float e=texelFetch(uError,px,0).r*uErrorScale; outc=heat(e); } // r = abs luma error
     FragColor=vec4(outc,1.0);
 }
 ```
 
 - [ ] **Step 3: Stage implementation**
 
-- `Init`: create `errorShader_ = Shader("comparison/error.comp")`, `compositeShader_ = Shader(fullscreenVert, "comparison/composite.frag")` (use the same fullscreen vertex shader the other post stages use — find its path in `PostProcessStage`), `errorTex_ = Texture::Create2D(w,h, GL_RGBA32F, GL_RGBA, GL_FLOAT)`, a `dummyVAO_`.
+- `Init(w,h)`: `width_=w; height_=h;` create `errorShader_ = std::make_unique<Shader>("comparison/error.comp")` (compute, single-arg ctor); `compositeShader_ = std::make_unique<Shader>("lighting/fullscreen.vert", "comparison/composite.frag")` (the exact fullscreen vertex shader `PostProcessStage` uses); `errorTex_ = Texture::Create2D(w,h, GL_RGBA32F, GL_RGBA, GL_FLOAT)`; `dummyVAO_ = std::make_unique<VertexArray>()`.
+- `Resize(w,h)`: `width_=w; height_=h;` recreate `errorTex_`.
 - `Execute`:
-  1. If `!resources.Has<ReferenceOutputs>()` (PT disabled) → bind default framebuffer and just blit/draw the realtime image (view 0), then return — keeps the screen correct when PT is off. (The realtime image is already on the backbuffer from PostProcessStage; simplest is to `return` and let PostProcess's output stand. Choose: when PT is off, **return immediately**.)
+  1. If `!resources.Has<ReferenceOutputs>()` (PT disabled) → **return immediately**, leaving PostProcessStage's realtime image on the backbuffer. Set `readout_.valid=false`.
   2. Get `const auto& ref = resources.Get<ReferenceOutputs>();` and the realtime resolved HDR: `resources.Has<TAAOutputs>() ? Get<TAAOutputs>().resolvedHdr : Get<LightingOutputs>().hdrColor`.
-  3. Run `error.comp`: bind realtime→unit 0, reference→unit 1, `errorTex_->BindImage(2, GL_WRITE_ONLY, GL_RGBA32F)`, set `uInvSampleCount = 1.0/max(ref.sampleCount,1)`; dispatch `(w+7)/8,(h+7)/8`.
-  4. Throttled readback for metrics: when `ref.sampleCount` is 1 or a power of two (cheap heuristic to avoid a per-frame stall), `glGetTextureImage` the `errorTex_` into a CPU `std::vector<float>`, sum `.a` (squared error) and accumulate relative error for MAPE, compute `rmse_ = sqrt(sumSE/pixelCount)`, store into `readout_`. Set `readout_.valid=true`, `readout_.sampleCount=ref.sampleCount`.
-  5. Composite to backbuffer: `Framebuffer::BindDefault()` (match how PostProcess binds the default FBO), use `compositeShader_`, bind realtime/reference/error textures + uniforms (`uView=(int)frame.debugSettings.compareView`, `uErrorScale`, `uInvSampleCount`), draw the fullscreen triangle.
+  3. Run `error.comp`: bind realtime→texture unit 0, reference→texture unit 1, `errorTex_->BindImage(2, GL_WRITE_ONLY, GL_RGBA32F)`, set `uResolution`, `uInvSampleCount = 1.0f/max(ref.sampleCount,1u)`. **Call `errorShader_->Use()` BEFORE `errorShader_->Dispatch((width_+7)/8,(height_+7)/8)`** — `Shader::Dispatch` does NOT bind the program (same trap fixed in PathTracerStage); without `Use()` the dispatch raises GL_INVALID_OPERATION "No active compute shader".
+  4. Throttled readback for metrics (to avoid a per-frame GPU stall): only when `ref.sampleCount == 1` or is a power of two, read the error texture back via `glGetTextureImage(errorTex_->GetID(), 0, GL_RGBA, GL_FLOAT, byteSize, cpuBuf.data())` into a `std::vector<float>` sized `width_*height_*4`. Loop pixels accumulating `sumSq += buf[i*4+1]` (g = squared error) and `sumRel += buf[i*4+2]` (b = relative error). Then `readout_.rmse = sqrt(sumSq / pixelCount)`, `readout_.mape = sumRel / pixelCount`, `readout_.sampleCount = ref.sampleCount`, `readout_.valid = true`. (Between readbacks `readout_` keeps its last values so the UI is stable.)
+  5. Composite to backbuffer: `Framebuffer::BindDefault();` `Renderer::SetViewport(0,0,width_,height_);` `Renderer::EnableDepthTest(false); Renderer::EnableCullFace(false);` then `compositeShader_->Use()`, bind realtime→unit 0 / reference→unit 1 / errorTex_→unit 2 and set the matching sampler uniforms, set `uResolution`, `uInvSampleCount`, `uView=(int)frame.debugSettings.compareView`, `uErrorScale=frame.debugSettings.errorScale`; `dummyVAO_->Bind(); glDrawArrays(GL_TRIANGLES,0,3); dummyVAO_->Unbind();` then restore `EnableCullFace(true); EnableDepthTest(true);` (mirror PostProcessStage's state save/restore).
 - `Readout()` returns `readout_`.
 
-For MAPE use `mean( |a-b| / (|b| + eps) )` on luminance, computed in the same CPU readback loop.
+Note the metric channels come straight from `error.comp`: g = squared luminance error (→ RMSE), b = relative luminance error (→ MAPE). The CPU loop only sums; no per-pixel luma recompute needed.
 
 - [ ] **Step 4: Register + expose readout**
 
