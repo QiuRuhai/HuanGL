@@ -490,19 +490,26 @@ void main() {
 
 - [ ] **Step 3: Stage implementation**
 
-Model `Init`/`Resize` on `BloomStage`/`TAAStage` (read those files). Details:
-- `Init(w,h)`: create `accum_ = Texture::Create2D(w,h, GL_RGBA32F, GL_RGBA, GL_FLOAT)`; create `shader_ = std::make_unique<Shader>("pathtracer/pathtrace.comp")`; load the env once: `env_ = Texture::LoadHDR(hdrPath_)` (used in Task 6); `sampleCount_ = 0`.
-- `Resize`: recreate `accum_` and call `InvalidateHistory()`.
-- `InvalidateHistory()`: `sampleCount_ = 0` (accumulation is overwritten when `uSampleIndex==0`).
+Model `Init`/`Resize` on `BloomStage`/`TAAStage` (read those files). Members: `std::string hdrPath_; std::unique_ptr<Shader> shader_; std::shared_ptr<Texture> accum_; std::shared_ptr<Texture> env_; PathTracerScene scene_; uint32_t sampleCount_ = 0; bool sceneDirty_ = true; glm::mat4 lastViewProj_ = glm::mat4(0.0f); int width_ = 0, height_ = 0;`.
+
+Two reset concerns are kept SEPARATE on purpose:
+- **Scene rebuild** (expensive: rebuilds the BVH + re-uploads SSBOs) happens only when geometry could have changed — i.e. on `InvalidateHistory()` (App calls `pipeline_->InvalidateHistory()` on scene switch and on resize).
+- **Accumulation reset** (cheap: just `sampleCount_ = 0`) happens additionally whenever the camera moves. TAA deliberately does NOT reset on camera motion (it reprojects), so we must NOT route camera-move resets through the global `InvalidateHistory` — the stage detects camera motion itself.
+
+Details:
+- `Init(w,h)`: `width_=w; height_=h;` create `accum_ = Texture::Create2D(w,h, GL_RGBA32F, GL_RGBA, GL_FLOAT)`; create `shader_ = std::make_unique<Shader>("pathtracer/pathtrace.comp")`; load the env once: `env_ = Texture::LoadHDR(hdrPath_)` (used in Task 6); `sampleCount_ = 0; sceneDirty_ = true;`.
+- `Resize(w,h)`: `width_=w; height_=h;` recreate `accum_`; then `InvalidateHistory()`.
+- `InvalidateHistory()`: `sampleCount_ = 0; sceneDirty_ = true;` (scene switch/resize → rebuild BVH next Execute).
 - `Execute(resources, frame)`:
   - If `!frame.renderSettings.pathTracerEnabled`, return immediately (zero cost).
-  - On first enable / scene change, (re)build `scene_.Build(resources.Get<RenderSceneView>())`. Detect scene change by comparing a cached pointer/hash; simplest: rebuild when `sampleCount_ == 0` and a `dirty_` flag is set by `InvalidateHistory`. For Task 5, rebuild every time `sampleCount_==0`.
+  - **Camera-move detection (accumulation reset only):** `if (frame.camera.unjitteredViewProj != lastViewProj_) { sampleCount_ = 0; lastViewProj_ = frame.camera.unjitteredViewProj; }`. (GLM `mat4` has `operator!=`.) Do NOT set `sceneDirty_` here — geometry is unchanged, only the viewpoint.
+  - **Scene rebuild (only when dirty):** `if (sceneDirty_) { scene_.Build(resources.Get<RenderSceneView>()); sceneDirty_ = false; sampleCount_ = 0; }`.
   - If `!scene_.Ready()`, return.
   - Bind `accum_` as image unit 0: `accum_->BindImage(0, GL_READ_WRITE, GL_RGBA32F)`.
   - Bind SSBOs: `scene_.BindSSBOs()`.
-  - Set uniforms: `uInvViewProj`, `uCamPos`, `uResolution`, `uSampleIndex = sampleCount_`, plus Task 6 light/env uniforms.
-  - `shader_->Dispatch((w+7)/8, (h+7)/8)`.
-  - `++sampleCount_`.
+  - **Reference camera uses the UNJITTERED transform** (no TAA jitter on the ground truth): `glm::mat4 invVP = glm::inverse(frame.camera.unjitteredViewProj);` set `uInvViewProj = invVP`, `uCamPos = frame.camera.camPos`, `uResolution = vec2(width_,height_)`, `uSampleIndex = sampleCount_`, plus Task 6 light/env uniforms.
+  - `shader_->Dispatch((width_+7)/8, (height_+7)/8)`.
+  - `++sampleCount_;`.
   - Publish: `ReferenceOutputs out; out.hdr = accum_; out.sampleCount = sampleCount_; resources.Set(out);` — consumers divide `hdr` by `sampleCount` to get the mean.
 
 - [ ] **Step 4: Register the stage + pass hdrPath**
@@ -515,25 +522,24 @@ stages_.push_back(std::make_unique<PathTracerStage>(hdrPath));
 
 Add `#include "stages/PathTracerStage.h"`. (Placing it after PostProcess keeps it a tail bypass; the profiler will time it like any stage.)
 
-- [ ] **Step 5: Temporary view of the accumulation buffer**
+Note: **no `App.cpp` change is needed for resets.** Scene-switch and resize already flow through `App::InvalidateTemporalHistory()` → `pipeline_->InvalidateHistory()` → every stage's `InvalidateHistory()`, which the new stage implements. Camera-move accumulation reset is self-detected inside `Execute` (above). This keeps TAA's history intact during camera motion while still resetting the path tracer.
 
-To observe before the comparison UI exists, temporarily make `PostProcessStage` or a quick path display the reference. Simplest: in Task 7 the ComparisonStage shows it; for now verify via RenderDoc or a one-line temporary blit. **Acceptable interim check:** add a temporary `std::printf` of `sampleCount_` each frame and confirm it climbs while frozen and resets on camera move (wire reset in Step 6). Remove the printf in Task 9.
+- [ ] **Step 5: Temporary verification hook**
 
-- [ ] **Step 6: Reset on camera move / scene switch**
+Add a temporary `std::printf("[PT] spp=%u\n", sampleCount_)` near the end of `Execute` (guarded so it only prints when enabled). It will be removed in Task 9. This lets the next step confirm accumulation climbs when still and resets on camera move, without needing the comparison UI (Task 7) yet.
 
-In `src/core/App.cpp`, where the frame is assembled (search for where `pipeline_.Execute` / `InvalidateHistory` is called for TAA on scene switch), also call `pipeline_.InvalidateHistory()` when the camera moved this frame and the path tracer is enabled. If a camera-moved signal does not exist, compare the current `camera` view matrix to the previous frame's and invalidate on change. (TAA already needs similar logic; reuse its trigger if present.)
+- [ ] **Step 6: Configure, build, run**
 
-- [ ] **Step 7: Configure, build, run**
+Build via the **Bash tool** (not PowerShell): `cmake -B build -DCMAKE_BUILD_TYPE=Debug 2>&1 | tail -8` then `cmake --build build --config Debug 2>&1 | tail -20`.
+Then temporarily set `RenderSettings::pathTracerEnabled`'s default to `true` (for this step only), launch `build/Debug/HuanGL.exe`, press `N` to the Cornell scene, and confirm in the console: `[PT] spp=` climbs while the camera is still and drops back to 1 right after a `WASD`/mouse move. The placeholder shader writes ray-direction colors, so the reference buffer holds data (visible later via the Task 7 UI). Close the app. **Revert the temporary `true` default back to `false`** before committing.
 
-Run: `cmake -B build -DCMAKE_BUILD_TYPE=Debug` && `cmake --build build --config Debug` && `build\Debug\HuanGL.exe`
-Expected: with `pathTracerEnabled` temporarily forced `true` (set the default to `true` for this step only, or toggle once the UI lands), the printf shows `sampleCount` increasing while the camera is still and resetting to 1 right after a `WASD`/mouse move. Revert the temporary default to `false`.
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/pipeline/stages/PathTracerStage.h src/pipeline/stages/PathTracerStage.cpp shader/pathtracer/pathtrace.comp src/renderer/FrameContext.h src/pipeline/RenderPipeline.h src/pipeline/RenderPipeline.cpp src/core/App.cpp
+git add src/pipeline/stages/PathTracerStage.h src/pipeline/stages/PathTracerStage.cpp shader/pathtracer/pathtrace.comp src/renderer/FrameContext.h src/pipeline/RenderPipeline.h src/pipeline/RenderPipeline.cpp
 git commit -m "feat: PathTracerStage plumbing with progressive accumulation"
 ```
+(Note `src/core/App.cpp` is intentionally NOT in this commit — no App change is required.)
 
 ---
 
