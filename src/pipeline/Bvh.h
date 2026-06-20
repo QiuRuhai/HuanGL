@@ -40,9 +40,11 @@ private:
     std::vector<BvhNode> nodes_;
     std::vector<BvhTri>  tris_;
 
-    // Recursively build a subtree covering tris_[first .. first+count).
-    // Returns the index of the new node appended to nodes_.
-    void BuildRecursive(int first, int count);
+    // Fill nodes_[nodeIdx] to cover tris_[first .. first+count).
+    // The slot at nodeIdx must already exist before calling.
+    // Child slots are pre-reserved as a contiguous pair so that
+    // right child is always at leftFirst+1 (GLSL traversal contract).
+    void BuildRecursive(int nodeIdx, int first, int count);
 };
 
 // CPU reference traversal — mirrors the GLSL traversal that will be written
