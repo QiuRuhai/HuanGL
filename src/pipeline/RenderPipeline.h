@@ -1,6 +1,7 @@
 #pragma once
 #include "IPipelineStage.h"
 #include "PipelineResources.h"
+#include "ComparisonReadout.h"
 #include "../renderer/FrameContext.h"
 #include "../renderer/RenderSceneView.h"
 #include "../renderer/UniformBuffer.h"
@@ -10,6 +11,8 @@
 #include <vector>
 
 namespace HuanGL {
+
+class ComparisonStage;
 
 class RenderPipeline {
 public:
@@ -23,6 +26,9 @@ public:
         return profiler_.GetResults();
     }
 
+    // Comparison metrics (valid only when path tracer is enabled).
+    const ComparisonReadout& GetComparisonReadout() const;
+
 private:
     void BuildStages(const std::string& hdrPath);
     void UpdateUniformBuffers(const RenderSceneView& scene, const FrameContext& frame);
@@ -35,6 +41,10 @@ private:
     std::unique_ptr<TimeUBO>   timeUBO_;
 
     GpuProfiler profiler_;
+
+    // Raw (non-owning) pointer to the ComparisonStage inside stages_.
+    // Set during BuildStages; valid for the lifetime of this pipeline.
+    ComparisonStage* comparisonStage_ = nullptr;
 };
 
 } // namespace HuanGL

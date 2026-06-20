@@ -1,0 +1,21 @@
+#version 460 core
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(binding = 0) uniform sampler2D uRealtime;   // resolved HDR (pre-tonemap)
+layout(binding = 1) uniform sampler2D uReference;  // accumulation buffer (sum)
+layout(rgba32f, binding = 2) uniform image2D uError;
+uniform vec2  uResolution;
+uniform float uInvSampleCount; // 1/sampleCount to turn the reference sum into a mean
+
+float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+void main(){
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if(px.x >= int(uResolution.x) || px.y >= int(uResolution.y)) return;
+    vec3 a = texelFetch(uRealtime,  px, 0).rgb;
+    vec3 b = texelFetch(uReference, px, 0).rgb * uInvSampleCount;
+    float la = luma(a), lb = luma(b);
+    float absErr = abs(la - lb);
+    float sqErr  = absErr * absErr;
+    float relErr = absErr / (abs(lb) + 1e-3);  // MAPE term, eps-guarded
+    imageStore(uError, px, vec4(absErr, sqErr, relErr, 1.0));
+}
