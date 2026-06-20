@@ -68,6 +68,16 @@ void PathTracerStage::Execute(PipelineResources& resources, const FrameContext& 
     shader_->SetVec2("uResolution",  glm::vec2(static_cast<float>(width_),
                                                static_cast<float>(height_)));
     shader_->SetInt("uSampleIndex",  static_cast<int>(sampleCount_));
+    shader_->SetInt("uMaxBounces",   frame.renderSettings.pathTracerMaxBounces);
+    shader_->SetInt("uSppPerFrame",  frame.renderSettings.pathTracerSpp);
+
+    const auto& sv = resources.Get<RenderSceneView>();
+    shader_->SetVec3("uSunDir",       sv.sunLight.direction);
+    shader_->SetVec3("uSunColor",     sv.sunLight.color);
+    shader_->SetFloat("uSunIntensity", sv.sunLight.intensity);
+
+    env_->Bind(0);
+    shader_->SetInt("uEnvMap", 0);
 
     shader_->Dispatch((width_ + 7) / 8, (height_ + 7) / 8);
 

@@ -1,24 +1,136 @@
 #version 460 core
 layout(local_size_x = 8, local_size_y = 8) in;
-layout(rgba32f, binding = 0) uniform image2D uAccum; // accumulation target
+layout(rgba32f, binding = 0) uniform image2D uAccum;
+
+struct GpuTri  { vec4 p0,p1,p2; vec4 n0,n1,n2; uvec4 mat; };
+struct GpuNode { vec4 aabbMin; vec4 aabbMax; ivec4 meta; }; // meta.x=leftFirst meta.y=triCount
+struct GpuMat  { vec4 baseColor; vec4 mr; };
+
+layout(std430, binding = 3) readonly buffer Nodes { GpuNode nodes[]; };
+layout(std430, binding = 4) readonly buffer Tris  { GpuTri  tris[];  };
+layout(std430, binding = 5) readonly buffer Mats  { GpuMat  mats[];  };
 
 uniform mat4 uInvViewProj;
 uniform vec3 uCamPos;
-uniform int  uSampleIndex;   // 0 on reset
 uniform vec2 uResolution;
+uniform int  uSampleIndex;
+uniform int  uMaxBounces;
+uniform int  uSppPerFrame;
 
-vec3 rayDir(vec2 uv) {
-    vec4 ndc = vec4(uv * 2.0 - 1.0, 1.0, 1.0);
-    vec4 world = uInvViewProj * ndc;
-    return normalize(world.xyz / world.w - uCamPos);
+uniform vec3  uSunDir;       // normalized direction the light travels
+uniform vec3  uSunColor;
+uniform float uSunIntensity;
+uniform sampler2D uEnvMap;   // HDR equirectangular
+
+const float PI = 3.14159265359;
+const float INF = 1e30;
+
+// ---- RNG (PCG hash) ----
+uint pcg(inout uint s){ s = s*747796405u+2891336453u; uint w=((s>>((s>>28u)+4u))^s)*277803737u; return (w>>22u)^w; }
+float rnd(inout uint s){ return float(pcg(s)) * (1.0/4294967296.0); }
+
+vec2 dirToEquirect(vec3 d){ return vec2(atan(d.z,d.x)/(2.0*PI)+0.5, acos(clamp(d.y,-1.0,1.0))/PI); }
+vec3 sampleEnv(vec3 d){ return texture(uEnvMap, dirToEquirect(d)).rgb; }
+
+bool slabAABB(vec3 ro, vec3 inv, vec3 mn, vec3 mx, float tmax){
+    vec3 t0=(mn-ro)*inv, t1=(mx-ro)*inv;
+    vec3 a=min(t0,t1), b=max(t0,t1);
+    float tn=max(max(a.x,a.y),a.z), tf=min(min(b.x,b.y),b.z);
+    return tf>=max(tn,0.0) && tn<tmax;
 }
 
-void main() {
-    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
-    if (px.x >= int(uResolution.x) || px.y >= int(uResolution.y)) return;
-    vec2 uv = (vec2(px) + 0.5) / uResolution;
-    vec3 d = rayDir(uv);
-    vec3 sample_ = 0.5 + 0.5 * d; // placeholder: visualize ray direction
-    vec3 prev = (uSampleIndex == 0) ? vec3(0.0) : imageLoad(uAccum, px).rgb;
-    imageStore(uAccum, px, vec4(prev + sample_, 1.0));
+// Möller–Trumbore. Returns t>0 on hit.
+bool hitTri(vec3 ro, vec3 rd, GpuTri tr, out float t, out vec3 bary){
+    vec3 e1=tr.p1.xyz-tr.p0.xyz, e2=tr.p2.xyz-tr.p0.xyz;
+    vec3 pv=cross(rd,e2); float det=dot(e1,pv);
+    if(abs(det)<1e-8) return false;
+    float inv=1.0/det; vec3 tv=ro-tr.p0.xyz;
+    float u=dot(tv,pv)*inv; if(u<0.0||u>1.0) return false;
+    vec3 qv=cross(tv,e1); float v=dot(rd,qv)*inv; if(v<0.0||u+v>1.0) return false;
+    t=dot(e2,qv)*inv; if(t<=1e-4) return false;
+    bary=vec3(1.0-u-v,u,v); return true;
+}
+
+int closestHit(vec3 ro, vec3 rd, out float tBest, out vec3 nrm, out uint matIdx){
+    vec3 inv=1.0/rd; tBest=INF; int best=-1;
+    int stack[64]; int sp=0; stack[sp++]=0;
+    while(sp>0){
+        GpuNode nd=nodes[stack[--sp]];
+        if(!slabAABB(ro,inv,nd.aabbMin.xyz,nd.aabbMax.xyz,tBest)) continue;
+        if(nd.meta.y>0){ // leaf
+            for(int i=0;i<nd.meta.y;i++){
+                int ti=nd.meta.x+i; float t; vec3 b;
+                if(hitTri(ro,rd,tris[ti],t,b) && t<tBest){
+                    tBest=t; best=ti;
+                    nrm=normalize(b.x*tris[ti].n0.xyz + b.y*tris[ti].n1.xyz + b.z*tris[ti].n2.xyz);
+                    matIdx=tris[ti].mat.x;
+                }
+            }
+        } else { stack[sp++]=nd.meta.x; stack[sp++]=nd.meta.x+1; }
+    }
+    return best;
+}
+
+bool occluded(vec3 ro, vec3 rd, float maxT){
+    vec3 inv=1.0/rd; int stack[64]; int sp=0; stack[sp++]=0;
+    while(sp>0){
+        GpuNode nd=nodes[stack[--sp]];
+        if(!slabAABB(ro,inv,nd.aabbMin.xyz,nd.aabbMax.xyz,maxT)) continue;
+        if(nd.meta.y>0){
+            for(int i=0;i<nd.meta.y;i++){ int ti=nd.meta.x+i; float t; vec3 b;
+                if(hitTri(ro,rd,tris[ti],t,b) && t<maxT) return true; }
+        } else { stack[sp++]=nd.meta.x; stack[sp++]=nd.meta.x+1; }
+    }
+    return false;
+}
+
+vec3 cosineHemisphere(vec3 n, inout uint s){
+    float u1=rnd(s), u2=rnd(s);
+    float r=sqrt(u1), phi=2.0*PI*u2;
+    vec3 t = normalize(abs(n.x)>0.9 ? vec3(0,1,0) : vec3(1,0,0));
+    vec3 b = normalize(cross(n,t)); t=cross(b,n);
+    return normalize(t*r*cos(phi) + b*r*sin(phi) + n*sqrt(max(0.0,1.0-u1)));
+}
+
+vec3 rayDir(vec2 uv){ vec4 w=uInvViewProj*vec4(uv*2.0-1.0,1.0,1.0); return normalize(w.xyz/w.w - uCamPos); }
+
+vec3 trace(vec3 ro, vec3 rd, inout uint s){
+    vec3 L=vec3(0.0), thr=vec3(1.0);
+    for(int bounce=0; bounce<uMaxBounces; ++bounce){
+        float t; vec3 n; uint mi;
+        int hit=closestHit(ro,rd,t,n,mi);
+        if(hit<0){ L += thr * sampleEnv(rd); break; }
+        vec3 albedo = mats[mi].baseColor.rgb;
+        vec3 p = ro + rd*t;
+        if(dot(n,rd)>0.0) n=-n;               // face forward
+        // NEE: direct sun (directional light travels along uSunDir)
+        vec3 toSun = normalize(-uSunDir);
+        float ndl = max(dot(n,toSun),0.0);
+        if(ndl>0.0 && !occluded(p+n*1e-3, toSun, INF)){
+            L += thr * (albedo/PI) * uSunColor * uSunIntensity * ndl;
+        }
+        // Indirect: cosine-weighted diffuse bounce. For cosine pdf the
+        // albedo/PI * cos / pdf simplifies to albedo.
+        thr *= albedo;
+        rd = cosineHemisphere(n,s);
+        ro = p + n*1e-3;
+        // Russian roulette after 3 bounces
+        if(bounce>=3){ float q=max(thr.r,max(thr.g,thr.b)); if(rnd(s)>q) break; thr/=max(q,1e-4); }
+    }
+    return L;
+}
+
+void main(){
+    ivec2 px=ivec2(gl_GlobalInvocationID.xy);
+    if(px.x>=int(uResolution.x)||px.y>=int(uResolution.y)) return;
+    uint seed = uint(px.x)*1973u + uint(px.y)*9277u + uint(uSampleIndex)*26699u + 1u;
+    vec3 acc=vec3(0.0);
+    for(int i=0;i<uSppPerFrame;i++){
+        vec2 jitter=vec2(rnd(seed),rnd(seed));
+        vec2 uv=(vec2(px)+jitter)/uResolution;
+        acc += trace(uCamPos, rayDir(uv), seed);
+    }
+    acc /= float(uSppPerFrame);
+    vec3 prev=(uSampleIndex==0)?vec3(0.0):imageLoad(uAccum,px).rgb;
+    imageStore(uAccum, px, vec4(prev+acc, 1.0));
 }
