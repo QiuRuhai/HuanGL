@@ -79,6 +79,11 @@ void PathTracerStage::Execute(PipelineResources& resources, const FrameContext& 
     env_->Bind(0);
     shader_->SetInt("uEnvMap", 0);
 
+    // Activate the compute program before dispatch. Shader::Dispatch only issues
+    // glDispatchCompute + a memory barrier; it does NOT bind the program, and the
+    // uniform setters above use glProgramUniform (DSA, no bind), so without this
+    // the dispatch hits "No active compute shader" (GL_INVALID_OPERATION).
+    shader_->Use();
     shader_->Dispatch((width_ + 7) / 8, (height_ + 7) / 8);
 
     ++sampleCount_;
