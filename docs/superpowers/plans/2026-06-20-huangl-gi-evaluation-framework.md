@@ -45,9 +45,12 @@ build\Debug\HuanGL.exe
 - `shader/comparison/error.comp` — per-pixel error image.
 - `shader/comparison/composite.frag` (+ reuse a fullscreen vertex path) — view-mode compositor to backbuffer.
 
+**Create:**
+- `src/scene/PrimitiveMesh.h` — shared `BuildMesh(verts, idx, matIdx)` helper (extracted from `TestScene.cpp`) that uploads GL buffers **and** fills `Mesh::cpuGeometry`. Used by both `TestScene` and `CornellScene`.
+
 **Modify:**
 - `src/renderer/Schema.h` — add `CpuGeometry` and a `std::shared_ptr<CpuGeometry>` member on `Mesh`.
-- `src/scene/TestScene.cpp` — fill CPU geometry in its `BuildMesh` helper (so the shared helper pattern stays correct).
+- `src/scene/TestScene.cpp` — drop the local `BuildMesh`; include and use the shared helper.
 - `src/renderer/FrameContext.h` — add path-tracer/comparison settings to `RenderSettings`/`DebugSettings`.
 - `src/app/ApplicationState.h` — add comparison metric/sample-count readout fields.
 - `src/pipeline/RenderPipeline.h` / `.cpp` — register the two new stages; expose comparison readouts; pass `hdrPath` to `PathTracerStage`.
@@ -57,15 +60,18 @@ build\Debug\HuanGL.exe
 
 ---
 
-## Task 1: CPU geometry retained on `Mesh`
+## Task 1: CPU geometry on `Mesh` + shared `BuildMesh` helper
 
 **Files:**
 - Modify: `src/renderer/Schema.h`
-- Modify: `src/scene/TestScene.cpp:36-60` (the `BuildMesh` helper)
+- Create: `src/scene/PrimitiveMesh.h`
+- Modify: `src/scene/TestScene.cpp:36-60` (remove local `BuildMesh`, use the shared one)
 - Test: assertion self-check added in Task 3's `--selftest` (geometry presence is observed at runtime here)
 
 **Interfaces:**
-- Produces: `struct CpuGeometry { std::vector<Vertex> vertices; std::vector<uint32_t> indices; };` and `Mesh::cpuGeometry` (`std::shared_ptr<CpuGeometry>`, may be null when a mesh was built without retention).
+- Produces:
+  - `struct CpuGeometry { std::vector<Vertex> vertices; std::vector<uint32_t> indices; };` and `Mesh::cpuGeometry` (`std::shared_ptr<CpuGeometry>`, may be null when a mesh was built without retention).
+  - `std::shared_ptr<Mesh> HuanGL::BuildMesh(const std::vector<Vertex>&, const std::vector<uint32_t>&, uint32_t matIdx)` in `src/scene/PrimitiveMesh.h` — uploads GL buffers and fills `cpuGeometry`.
 
 - [ ] **Step 1: Add `CpuGeometry` and the member**
 
@@ -90,9 +96,9 @@ Then add to `struct Mesh` (after `subMeshes`):
 
 `Vertex` is already declared later in the file; move the `Vertex` struct definition above `CpuGeometry`, or forward the need by relocating `CpuGeometry` below `Vertex`. Place `CpuGeometry` **after** the `Vertex` definition (end of the structs, just before the closing namespace is fine) and keep the `Mesh::cpuGeometry` member referring to it via the shared_ptr (incomplete type is OK for `shared_ptr` members as long as the full type is visible in this header — so define `CpuGeometry` before `Mesh`). Concretely: move `struct Vertex { ... };` to the top of the struct list (right after `#include`s), then define `CpuGeometry`, then `SubMesh`, then `Mesh`.
 
-- [ ] **Step 2: Fill CPU geometry in `TestScene::BuildMesh`**
+- [ ] **Step 2: Extract `BuildMesh` into a shared header**
 
-In `src/scene/TestScene.cpp`, inside `BuildMesh` just before `return m;`:
+Create `src/scene/PrimitiveMesh.h` with the helper moved verbatim from `TestScene.cpp:36-60`, wrapped in `namespace HuanGL`, declared `inline`, with the needed includes (`"../renderer/Schema.h"`, `"../renderer/Buffer.h"`, `<memory>`, `<vector>`, `<cstddef>`). Add the CPU-geometry fill just before `return m;`:
 
 ```cpp
     m->cpuGeometry = std::make_shared<CpuGeometry>();
@@ -100,16 +106,20 @@ In `src/scene/TestScene.cpp`, inside `BuildMesh` just before `return m;`:
     m->cpuGeometry->indices  = idx;
 ```
 
-- [ ] **Step 3: Build**
+- [ ] **Step 3: Use the shared helper in `TestScene`**
 
-Run: `cmake --build build --config Debug`
-Expected: compiles clean; no behavior change at runtime (the new field is unused so far).
+In `src/scene/TestScene.cpp`, delete the local `static ... BuildMesh(...)` definition and `#include "PrimitiveMesh.h"`. The call sites (`BuildMesh(pv, {0,1,2,0,2,3}, 3)` etc.) are unchanged since the signature matches.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Build**
+
+Run: `cmake -B build -DCMAKE_BUILD_TYPE=Debug` then `cmake --build build --config Debug`
+Expected: compiles clean; TestScene renders exactly as before (the new field is unused so far).
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/renderer/Schema.h src/scene/TestScene.cpp
-git commit -m "feat: retain optional CPU geometry on Mesh for BVH construction"
+git add src/renderer/Schema.h src/scene/PrimitiveMesh.h src/scene/TestScene.cpp
+git commit -m "feat: retain CPU geometry on Mesh; extract shared BuildMesh helper"
 ```
 
 ---
@@ -150,7 +160,7 @@ public:
 
 - [ ] **Step 2: Implementation**
 
-`src/scene/CornellScene.cpp`. Reuse the `BuildMesh` pattern from `TestScene.cpp:36-60` (copy the helper in as a local `static`, including the Task 1 CPU-geometry fill). Build the room from axis-aligned quads and the inner boxes from cubes. Provide a `static std::vector<Vertex> Quad(p0,p1,p2,p3,normal)` and a `static void AppendBox(...)` helper, or assemble explicit quads. Materials (factor-only, metallic 0):
+`src/scene/CornellScene.cpp`. `#include "PrimitiveMesh.h"` and use the shared `BuildMesh` helper (Task 1) — do not redefine it. Build the room from axis-aligned quads and the inner boxes from cubes. Provide a `static std::vector<Vertex> Quad(p0,p1,p2,p3,normal)` and a `static void AppendBox(...)` helper, or assemble explicit quads. Materials (factor-only, metallic 0):
 
 ```cpp
 // 0 white, 1 red, 2 green
