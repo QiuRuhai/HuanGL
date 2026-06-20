@@ -50,6 +50,9 @@ struct RenderSettings {
     float exposure = 1.0f;
     TAASettings taa;
     BloomSettings bloom;
+    bool pathTracerEnabled  = false; // reference path tracer (off by default; expensive)
+    int  pathTracerSpp      = 1;     // samples added per frame
+    int  pathTracerMaxBounces = 4;
 
     void CycleToneMap() {
         int next = (ToShaderToneMapMode(toneMapMode) + 1) % 4;
@@ -61,6 +64,10 @@ struct DebugSettings {
     DebugView view = DebugView::Final;
     bool showImGui = true;
     bool freezeCamera = false;
+
+    enum class CompareView { Realtime = 0, Reference = 1, Split = 2, ErrorHeatmap = 3 };
+    CompareView compareView = CompareView::Realtime;
+    float errorScale = 1.0f;        // heatmap sensitivity
 };
 
 struct FrameContext {

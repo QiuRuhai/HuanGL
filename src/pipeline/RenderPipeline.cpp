@@ -5,6 +5,7 @@
 #include "stages/TAAStage.h"
 #include "stages/BloomStage.h"
 #include "stages/PostProcessStage.h"
+#include "stages/PathTracerStage.h"
 #include "../renderer/Renderer.h"
 
 namespace HuanGL {
@@ -16,6 +17,7 @@ void RenderPipeline::BuildStages(const std::string& hdrPath) {
     stages_.push_back(std::make_unique<BloomStage>());
     stages_.push_back(std::make_unique<TAAStage>());
     stages_.push_back(std::make_unique<PostProcessStage>());
+    stages_.push_back(std::make_unique<PathTracerStage>(hdrPath));
 }
 
 void RenderPipeline::Init(int w, int h, const std::string& hdrPath) {

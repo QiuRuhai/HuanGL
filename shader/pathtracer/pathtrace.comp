@@ -1,0 +1,24 @@
+#version 460 core
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(rgba32f, binding = 0) uniform image2D uAccum; // accumulation target
+
+uniform mat4 uInvViewProj;
+uniform vec3 uCamPos;
+uniform int  uSampleIndex;   // 0 on reset
+uniform vec2 uResolution;
+
+vec3 rayDir(vec2 uv) {
+    vec4 ndc = vec4(uv * 2.0 - 1.0, 1.0, 1.0);
+    vec4 world = uInvViewProj * ndc;
+    return normalize(world.xyz / world.w - uCamPos);
+}
+
+void main() {
+    ivec2 px = ivec2(gl_GlobalInvocationID.xy);
+    if (px.x >= int(uResolution.x) || px.y >= int(uResolution.y)) return;
+    vec2 uv = (vec2(px) + 0.5) / uResolution;
+    vec3 d = rayDir(uv);
+    vec3 sample_ = 0.5 + 0.5 * d; // placeholder: visualize ray direction
+    vec3 prev = (uSampleIndex == 0) ? vec3(0.0) : imageLoad(uAccum, px).rgb;
+    imageStore(uAccum, px, vec4(prev + sample_, 1.0));
+}
